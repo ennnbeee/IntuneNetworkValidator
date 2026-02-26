@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.1.0
+.VERSION 0.1.1
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME
@@ -13,7 +13,8 @@
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
-v0.1.0 - Initial release.
+v0.1.1 - Summary function created
+v0.1.0 - Initial release
 
 .PRIVATEDATA
 #>
@@ -56,7 +57,7 @@ param(
 
 #region variables
 $timeoutSecs = 3
-$networkEndpointsCSV = 'https://raw.githubusercontent.com/ennnbeee/IntuneNetworkValidator/main/IntuneNetworkEndpoints.csv'
+$networkEndpointsCSV = 'https://raw.githubusercontent.com/ennnbeee/IntuneNetworkValidator/main/IntuneNetworkEndpoints.csv3'
 $categoriesAutopilot = @('Delivery Optimization Dependencies', 'Windows Autopilot', 'Scripts and Apps', 'Microsoft Store', 'Authentication Dependencies')
 #endregion variables
 
@@ -103,7 +104,6 @@ function Get-IPRangeFromCIDR() {
     #([BitConverter]::GetBytes([Net.IPAddress]::HostToNetworkOrder($ipStart)) | ForEach-Object { $_ } ) -join '.'
     #([BitConverter]::GetBytes([Net.IPAddress]::HostToNetworkOrder($ipEnd)) | ForEach-Object { $_ } ) -join '.'
 }
-
 function Get-NetworkEndpoint() {
     <#
     .SYNOPSIS
@@ -135,7 +135,6 @@ function Get-NetworkEndpoint() {
         $csvContent = Invoke-WebRequest -Uri $csvUrl -UseBasicParsing
         $networkEndpoints = $csvContent.Content | ConvertFrom-Csv
         Write-Host 'Successfully retrieved network endpoints from GitHub.'-ForegroundColor Green
-
     }
     catch {
         Write-Host 'Failed to retrieve network endpoints from GitHub.'-ForegroundColor Yellow
@@ -396,7 +395,6 @@ function Get-NetworkEndpoint() {
     }
     return $networkEndpoints
 }
-
 function Test-NetworkEndpoint() {
     <#
     .SYNOPSIS
@@ -536,7 +534,6 @@ function Test-NetworkEndpoint() {
 
     }
 }
-
 function Test-NetworkEndpointList () {
     <#
     .SYNOPSIS
@@ -572,13 +569,7 @@ function Test-NetworkEndpointList () {
 
         return $allResults
     }
-
-
-
-
-
 }
-
 function Get-NetworkEndpointSummary () {
     <#
     .SYNOPSIS
@@ -601,24 +592,36 @@ function Get-NetworkEndpointSummary () {
         }
     }
     process {
-        $summaryOK = [int]($networkEndpointResults | Where-Object { $_.Status -eq 'OK' } | Measure-Object).Count
-        $summaryFail = [int]($networkEndpointResults | Where-Object { $_.Status -eq 'FAIL' } | Measure-Object).Count
-        $summarySkip = [int]($networkEndpointResults | Where-Object { $_.Status -eq 'SKIP' } | Measure-Object).Count
-        $summaryInfo = [int]($networkEndpointResults | Where-Object { $_.Status -eq 'INFO' } | Measure-Object).Count
-        $summaryTotal = [int]($networkEndpointResults | Measure-Object).Count
+        $summaryOK = $networkEndpointResults | Where-Object { $_.Status -eq 'OK' }
+        $summaryFail = $networkEndpointResults | Where-Object { $_.Status -eq 'FAIL' }
+        $summarySkip = $networkEndpointResults | Where-Object { $_.Status -eq 'SKIP' }
+        $summaryInfo = $networkEndpointResults | Where-Object { $_.Status -eq 'INFO' }
     }
     end {
-        $summary.Total = $summaryTotal
-        $summary.Passed = $summaryOK
-        $summary.Skipped = $summarySkip
-        $summary.Info = $summaryInfo
-        $summary.Failed = $summaryFail
-        return $summary
+        $summary.Total = [int]($networkEndpointResults | Measure-Object).Count
+        $summary.Passed = [int]($summaryOK | Measure-Object).Count
+        $summary.Skipped = [int]($summarySkip | Measure-Object).Count
+        $summary.Info = [int]($summaryInfo | Measure-Object).Count
+        $summary.Failed = [int]($summaryFail | Measure-Object).Count
+        #return $summary
+
+        Write-Host "`n$($summary.Total) Endpoint(s) tested" -ForegroundColor Magenta
+        Write-Host "`n$($summary.Passed) Endpoint(s) passed" -ForegroundColor Green
+        Write-Host "`n$($summary.Failed) Endpoint(s) failed" -ForegroundColor Red
+        $summaryFail | ForEach-Object {
+            Write-Host "$($_.Address + ':' + $_.Port + ' - ' + $_.Protocol)" -ForegroundColor White
+        }
+        Write-Host "`n$($summary.Skipped) Endpoint(s) skipped" -ForegroundColor Cyan
+        $summarySkip | ForEach-Object {
+            Write-Host "$($_.Address + ':' + $_.Port + ' - ' + $_.Protocol)" -ForegroundColor White
+        }
+        Write-Host "`n$($summary.Info) Endpoint(s) for information" -ForegroundColor Yellow
+        $summaryInfo | ForEach-Object {
+            Write-Host "$($_.Address + ':' + $_.Port + ' - ' + $_.Protocol)" -ForegroundColor White
+        }
     }
 }
 #$networkEndpoints | Export-Csv -Path '.\IntuneNetworkEndpoints.csv'-NoTypeInformation -Encoding UTF8
-
-
 #endregion functions
 
 if ($region) {
@@ -635,14 +638,7 @@ if ($testScope -eq 'Autopilot') {
 }
 
 $allResults = @()
-
 $allResults += Test-NetworkEndpointList -networkEndpoints $networkEndpoints
 
 Get-NetworkEndpointSummary -networkEndpointResults $allResults
 
-$networkEndpoints = $networkEndpoints[4]
-$category = $networkEndpoints.Category
-$subCategory = $networkEndpoints.Subcategory
-$address = $networkEndpoints.Endpoint
-$protocol = $networkEndpoints.Protocol
-$ports = $networkEndpoints.Ports
