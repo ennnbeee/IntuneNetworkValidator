@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.1.2
+.VERSION 0.1.3
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME
@@ -13,6 +13,7 @@
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
+v0.1.3 - Added additional endpoints
 v0.1.2 - Included DNS testing and report functions
 v0.1.1 - Summary function created
 v0.1.0 - Initial release
@@ -48,7 +49,7 @@ param(
     [String]$testType = 'Lite',
 
     [Parameter(Mandatory = $false, HelpMessage = 'The scope of the test. Autopilot will only test endpoints relevant to Windows Autopilot, while Full will test all endpoints.')]
-    [ValidateSet('Autopilot', 'W365', 'Full')]
+    [ValidateSet('Autopilot', 'W365', 'W365-Client', 'W365-CloudPC', 'Full')]
     [String]$testScope = 'Autopilot',
 
     [Parameter(Mandatory = $false, HelpMessage = 'The region to test endpoints in. Valid values are North America, Europe, Australia, and Asia Pacific.')]
@@ -60,7 +61,9 @@ param(
 $timeoutSecs = 2
 $networkEndpointsCSV = 'https://raw.githubusercontent.com/ennnbeee/IntuneNetworkValidator/main/IntuneNetworkEndpoints.csv3'
 $idsAutopilot = @('172', '164', '165', '169', '173', '182', '203', '201', '56', '150', '159')
-$idsW365 = @('206')
+$idsW365Client = @('206')
+$idsW365CloudPC = @('206', '207', '208')
+$idsW365 = $idsW365Client + $idsW365CloudPC
 #endregion variables
 
 #region functions
@@ -432,17 +435,33 @@ function Get-NetworkEndpoint() {
             [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'Registration'; Endpoint = 'login.microsoftonline.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global' }
             [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'Registration'; Endpoint = 'login.live.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global' }
             [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'Registration'; Endpoint = 'enterpriseregistration.windows.net'; Protocol = 'TCP'; Ports = '443'; Region = 'Global' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Provisioning'; Endpoint = 'global.azure-devices-provisioning.net'; Protocol = 'TCP'; Ports = '443, 5671'; Region = 'Global' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-prod-prap01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'Asia Pacific' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-prod-prau01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'Australia' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-prod-preu01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'Europe' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-prod-prna01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'North America' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-prod-prna02.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'North America' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-2-prod-preu01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'Europe' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-2-prod-prna01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'North America' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-3-prod-preu01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'Europe' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-3-prod-prna01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'North America' }
-            [PSCustomObject]@{Id = '206'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-4-prod-prna01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'North America' }
+            # ID 207 Windows 365 Cloid PC
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Provisioning'; Endpoint = 'global.azure-devices-provisioning.net'; Protocol = 'TCP'; Ports = '443, 5671'; Region = 'Global' }
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-prod-prap01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'Asia Pacific' }
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-prod-prau01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'Australia' }
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-prod-preu01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'Europe' }
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-prod-prna01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'North America' }
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-prod-prna02.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'North America' }
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-2-prod-preu01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'Europe' }
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-2-prod-prna01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'North America' }
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-3-prod-preu01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'Europe' }
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-3-prod-prna01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'North America' }
+            [PSCustomObject]@{Id = '207'; Category = 'W365-CloudPC'; Subcategory = 'IoT Hubs'; Endpoint = 'hm-iot-in-4-prod-prna01.azure-devices.net'; Protocol = 'TCP'; Ports = '443,5671'; Region = 'North America' }
+            # ID 208 AVD Session Host
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Core'; Endpoint = 'login.microsoftonline.com'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Authentication to Microsoft Online Services' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Core'; Endpoint = '51.5.0.0/16'; Protocol = 'TCP'; Ports = 3478; Region = 'Global'; Notes = 'RDP Shortpath relayed connectivity (TURN/STUN). Service tag: WindowsVirtualDesktop' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Core'; Endpoint = 'catalogartifact.azureedge.net'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Azure Marketplace. Service tag: AzureFrontDoor.Frontend' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Core'; Endpoint = 'aka.ms'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Microsoft URL shortener' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Monitoring'; Endpoint = 'gcs.prod.monitoring.core.windows.net'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'AVD agent traffic. Service tag: AzureMonitor' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Activation'; Endpoint = 'azkms.core.windows.net'; Protocol = 'TCP'; Ports = 1688; Region = 'Global'; Notes = 'Windows KMS activation' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Updates'; Endpoint = 'mrsglobalsteus2prod.blob.core.windows.net'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'AVD agent and SXS stack updates' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Portal'; Endpoint = 'wvdportalstorageblob.blob.core.windows.net'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Azure portal support' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Azure'; Endpoint = '169.254.169.254/32'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'Azure Instance Metadata Service (IMDS)' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Azure'; Endpoint = '168.63.129.16/32'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'Session host health monitoring' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Certificates'; Endpoint = 'oneocsp.microsoft.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'OCSP certificate validation' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Certificates'; Endpoint = 'www.microsoft.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'Certificate chain' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Certificates'; Endpoint = 'azcsprodeusaikpublish.blob.core.windows.net'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'AIK certificate publishing' }
+            [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Certificates'; Endpoint = 'ctldl.windowsupdate.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'Certificate Trust List download' }
         )
         Write-Host 'Successfully retrieved network endpoints from the script.'-ForegroundColor Green
     }
@@ -716,7 +735,7 @@ function Get-NetworkEndpointSummary () {
                 Subcat   = $_.Subcategory
             }
         }
-        Write-Host "`n$($summary.DNS) Endpoint(s) failed due to DNS issues:" -ForegroundColor Red
+        Write-Host "`n$($summary.DNS) Endpoint(s) failed due to DNS issues:" -ForegroundColor DarkYellow
         $summaryDNS | ForEach-Object {
             $padding = [string]::new(' ', [Math]::Max(0, 60 - ($($($_.Address + ':' + $_.Port)).Length)))
             Write-Host "$($_.Address + ':' + $_.Port)" -ForegroundColor White -NoNewline
@@ -822,6 +841,8 @@ $networkEndpoints | Export-Csv -Path '.\IntuneNetworkEndpoints.csv'-NoTypeInform
 switch ($testScope) {
     'Autopilot' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsAutopilot } }
     'W365' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsW365 } }
+    'W365-CloudPC' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsW365CloudPC } }
+    'W365-Client' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsW365Client } }
 }
 
 Write-Host "`nTesting connectivity to $($networkEndpoints.Count) global" -ForegroundColor Green -NoNewline
