@@ -767,6 +767,7 @@ function Get-NetworkEndpointSummary () {
         [array]$networkEndpointResults
     )
     begin {
+        $export = [System.Collections.ArrayList]::new()
         $summary = [PSCustomObject]@{
             'Total'   = $null
             'Passed'  = $null
@@ -776,8 +777,6 @@ function Get-NetworkEndpointSummary () {
             'IPv6'    = $null
             'DNS'     = $null
         }
-
-        $exPorts = [System.Collections.ArrayList]::new()
     }
     process {
         $summaryOK = $networkEndpointResults | Where-Object { $_.Status -eq 'OK' }
@@ -795,8 +794,6 @@ function Get-NetworkEndpointSummary () {
         $summary.Info = [int]($summaryInfo | Measure-Object).Count
         $summary.IPv6 = [int]($summaryIPv6 | Measure-Object).Count
         $summary.DNS = [int]($summaryDNS | Measure-Object).Count
-
-        #return $summary
 
         Write-Host "`n$($summary.Total) Endpoint(s) tested" -ForegroundColor White
         Write-Host "`n$($summary.Passed) Endpoint(s) passed" -ForegroundColor Green
@@ -875,7 +872,6 @@ function Get-NetworkEndpointSummary () {
                 Subcat   = $_.Subcategory
             }
         }
-
         return $export
     }
 }
