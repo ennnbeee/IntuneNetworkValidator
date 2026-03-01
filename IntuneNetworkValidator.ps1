@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.1.4
+.VERSION 0.1.5
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME
@@ -13,6 +13,7 @@
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
+v0.1.5 - Updated with AVD endpoints
 v0.1.4 - Updated CIDR function, changed testing logic for hostname endpoints
 v0.1.3 - Added additional endpoints
 v0.1.2 - Included DNS testing and report functions
@@ -64,9 +65,9 @@ param(
 #region variables
 $timeoutSecs = 2
 $networkEndpointsCSV = 'https://raw.githubusercontent.com/ennnbeee/IntuneNetworkValidator/main/IntuneNetworkEndpoints.csv3'
-$idsAutopilot = @('172', '164', '165', '169', '173', '182', '203', '201', '56', '150', '159')
-$idsW365Client = @('206')
-$idsW365CloudPC = @('206', '207', '208')
+$idsAutopilot = @('170', '172', '56', '164', '201', '203', '204')
+$idsW365Client = @('209', '210')
+$idsW365CloudPC = @('207', '208', '163', '170', '204', '203', '164')
 $idsW365 = $idsW365Client + $idsW365CloudPC
 #endregion variables
 
@@ -469,6 +470,32 @@ function Get-NetworkEndpoint() {
             [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Certificates'; Endpoint = 'www.microsoft.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'Certificate chain' }
             [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Certificates'; Endpoint = 'azcsprodeusaikpublish.blob.core.windows.net'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'AIK certificate publishing' }
             [PSCustomObject]@{Id = '208'; Category = 'AVD-SessionHost'; Subcategory = 'Certificates'; Endpoint = 'ctldl.windowsupdate.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'Certificate Trust List download' }
+            # ID 209 Client AVD
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Auth'; Endpoint = 'login.microsoftonline.com'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Authentication to Microsoft Online Services' }
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Navigation'; Endpoint = 'go.microsoft.com'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Microsoft FWLinks' }
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Navigation'; Endpoint = 'aka.ms'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Microsoft URL shortener' }
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Docs'; Endpoint = 'learn.microsoft.com'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Microsoft documentation' }
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Legal'; Endpoint = 'privacy.microsoft.com'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Microsoft privacy statement' }
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Service'; Endpoint = 'graph.microsoft.com'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Microsoft Graph API' }
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Portal'; Endpoint = 'windows.cloud.microsoft'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Connection center' }
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Portal'; Endpoint = 'windows365.microsoft.com'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Windows 365 service traffic' }
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Portal'; Endpoint = 'ecs.office.com'; Protocol = 'TCP'; Ports = 443; Region = 'Global'; Notes = 'Connection center configuration' }
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Certificates'; Endpoint = 'www.microsoft.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'Certificate chain' }
+            [PSCustomObject]@{Id = '209'; Category = 'Client-AVD'; Subcategory = 'Certificates'; Endpoint = 'azcsprodeusaikpublish.blob.core.windows.net'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'AIK certificate publishing' }
+            # ID 210 Client - Azure CA Certificate checks (closed network)
+            # Source: https://learn.microsoft.com/en-us/azure/security/fundamentals/azure-certificate-authority-details
+            # Note: oneocsp.microsoft.com and www.microsoft.com already covered above in Client-AVD certs
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'cacerts.digicert.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'AIA - DigiCert CA certificate downloads' }
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'cacerts.digicert.cn'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'AIA - DigiCert CA certificate downloads (CN)' }
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'cacerts.geotrust.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'AIA - GeoTrust CA certificate downloads' }
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'caissuers.microsoft.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'AIA - Microsoft CA certificate downloads' }
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'www.microsoft.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'AIA and CRL - Microsoft certificate downloads' }
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'crl3.digicert.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'CRL - DigiCert CRL distribution point' }
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'crl4.digicert.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'CRL - DigiCert CRL distribution point' }
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'crl.digicert.cn'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'CRL - DigiCert CRL distribution point (CN)' }
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'ocsp.digicert.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'OCSP - DigiCert OCSP responder' }
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'ocsp.digicert.cn'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'OCSP - DigiCert OCSP responder (CN)' }
+            [PSCustomObject]@{Id = '210'; Category = 'Client-AVD-CertCA'; Subcategory = 'Certificate Authority'; Endpoint = 'oneocsp.microsoft.com'; Protocol = 'TCP'; Ports = 80; Region = 'Global'; Notes = 'OCSP - Microsoft OCSP responder' }
         )
         Write-Host 'Successfully retrieved network endpoints from the script.'-ForegroundColor Green
     }
@@ -476,6 +503,7 @@ function Get-NetworkEndpoint() {
         $networkEndpoints = $networkEndpoints | Where-Object { $_.Region -eq $region -or $_.Region -eq 'Global' }
     }
     return $networkEndpoints
+    $networkEndpoints | Select-Object -Property Id, Category, Subcategory
 }
 function Test-NetworkEndpoint() {
     <#
@@ -542,7 +570,7 @@ function Test-NetworkEndpoint() {
                 Port        = $null
                 Status      = $null
             }
-            $testItem.Port = $portSplit
+            $testItem.Ports = $portSplit
 
             # Wildcard domain
             if ($testItem.Address -match '^\*') {
@@ -749,7 +777,7 @@ function Get-NetworkEndpointSummary () {
             'DNS'     = $null
         }
 
-        $export = [System.Collections.ArrayList]::new()
+        $exPorts = [System.Collections.ArrayList]::new()
     }
     process {
         $summaryOK = $networkEndpointResults | Where-Object { $_.Status -eq 'OK' }
