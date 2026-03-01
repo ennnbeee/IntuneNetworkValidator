@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.1.3
+.VERSION 0.1.4
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME
@@ -13,6 +13,7 @@
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
+v0.1.4 - Updated CIDR function, changed testing logic for hostname endpoints
 v0.1.3 - Added additional endpoints
 v0.1.2 - Included DNS testing and report functions
 v0.1.1 - Summary function created
@@ -23,18 +24,21 @@ v0.1.0 - Initial release
 
 <#
 .SYNOPSIS
-
+Script to test network connectivity to Microsoft Intune network endpoints.
 
 .DESCRIPTION
+Uses a curated list of network endpoints from Microsoft and alternative sources due to the lack of an official Microsoft endpoint list to test connectivity for Microsoft Intune and related services.
+The script tests both network connectivity and DNS resolution for each endpoint and provides a summary report at the end.
 
 .PARAMETER testType
-
+The type of test to perform. 'Lite' will test a single IP address, while 'Full' will test each IP in the CIDR range.
 
 .PARAMETER testScope
-
+Scope of the network endpoints to test specific to the technology required. Leave blank to test all endpoints.
+Valid values are 'Autopilot', 'W365' for Windows 365 Cloud PC connectivity, 'W365-Client' for Windows 365 Cloud PC client connectivity, 'W365-CloudPC' for Windows 365 Cloud PC backend connectivity, and 'Full' for all endpoints.
 
 .PARAMETER region
-
+Region specific endpoints in addition to the global network endpoints. Valid values are 'North America', 'Europe', 'Australia', and 'Asia Pacific'.
 
 .EXAMPLE
 .\IntuneNetworkValidator.ps1 -testType Lite -testScope Autopilot -region 'Europe'
@@ -44,15 +48,15 @@ v0.1.0 - Initial release
 [CmdletBinding(DefaultParameterSetName = 'Default')]
 
 param(
-    [Parameter(Mandatory = $false, HelpMessage = 'The type of test to perform. Lite will test the CIDR as a whole, while Full will test each IP in the CIDR range.')]
+    [Parameter(Mandatory = $false, HelpMessage = 'The type of test to perform. Lite will test a single IP address, while Full will test each IP in the CIDR range.')]
     [ValidateSet('Lite', 'Full')]
     [String]$testType = 'Lite',
 
-    [Parameter(Mandatory = $false, HelpMessage = 'The scope of the test. Autopilot will only test endpoints relevant to Windows Autopilot, while Full will test all endpoints.')]
+    [Parameter(Mandatory = $false, HelpMessage = 'The scope of the test.')]
     [ValidateSet('Autopilot', 'W365', 'W365-Client', 'W365-CloudPC', 'Full')]
     [String]$testScope = 'Autopilot',
 
-    [Parameter(Mandatory = $false, HelpMessage = 'The region to test endpoints in. Valid values are North America, Europe, Australia, and Asia Pacific.')]
+    [Parameter(Mandatory = $false, HelpMessage = 'Valid values are North America, Europe, Australia, and Asia Pacific.')]
     [ValidateSet('North America', 'Europe', 'Australia', 'Asia Pacific')]
     [String]$region
 )
@@ -70,10 +74,13 @@ $idsW365 = $idsW365Client + $idsW365CloudPC
 function Get-IPRangeFromCIDR() {
     <#
     .SYNOPSIS
+    Converts a CIDR notation to a range of IP addresses.
 
     .DESCRIPTION
+    This function takes a CIDR notation (e.g., 192.168.1.0/24) and returns the start and end IP addresses of the range.
 
     .PARAMETER cidrNotation
+    The CIDR notation to convert (e.g., 192.168.1.0/24).
 
     #>
 
@@ -83,31 +90,36 @@ function Get-IPRangeFromCIDR() {
         [string]$cidrNotation
     )
 
-    $addr, $maskLength = $cidrNotation -split '/'
-    [int]$maskLen = 0
-    if (-not [int32]::TryParse($maskLength, [ref] $maskLen)) {
-        throw "Cannot parse CIDR mask length string: '$maskLen'"
-    }
-    if (0 -gt $maskLen -or $maskLen -gt 32) {
-        throw 'CIDR mask length must be between 0 and 32'
-    }
-    $ipAddr = [Net.IPAddress]::Parse($addr)
-    if ($ipAddr -eq $null) {
-        throw "Cannot parse IP address: $addr"
-    }
-    if ($ipAddr.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork) {
-        throw 'Can only process CIDR for IPv4'
-    }
+    if ($cidrNotation -like '*/*') {
+        $addr, $maskLength = $cidrNotation -split '/'
+        [int]$maskLen = 0
+        if (-not [int32]::TryParse($maskLength, [ref] $maskLen)) {
+            throw "Cannot parse CIDR mask length string: '$maskLen'"
+        }
+        if (0 -gt $maskLen -or $maskLen -gt 32) {
+            throw 'CIDR mask length must be between 0 and 32'
+        }
+        $ipAddr = [Net.IPAddress]::Parse($addr)
+        if ($ipAddr -eq $null) {
+            throw "Cannot parse IP address: $addr"
+        }
+        if ($ipAddr.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork) {
+            throw 'Can only process CIDR for IPv4'
+        }
 
-    $shiftCnt = 32 - $maskLen
-    $mask = -bnot ((1 -shl $shiftCnt) - 1)
-    $ipNum = [Net.IPAddress]::NetworkToHostOrder([BitConverter]::ToInt32($ipAddr.GetAddressBytes(), 0))
-    ($ipNum -band $mask)
-    ($ipNum -bor (-bnot $mask))
+        $shiftCnt = 32 - $maskLen
+        $mask = -bnot ((1 -shl $shiftCnt) - 1)
+        $ipNum = [Net.IPAddress]::NetworkToHostOrder([BitConverter]::ToInt32($ipAddr.GetAddressBytes(), 0))
+        $ipStart = ($ipNum -band $mask)
+        $ipEnd = ($ipNum -bor (-bnot $mask))
 
-    # return as tuple of strings:
-    #([BitConverter]::GetBytes([Net.IPAddress]::HostToNetworkOrder($ipStart)) | ForEach-Object { $_ } ) -join '.'
-    #([BitConverter]::GetBytes([Net.IPAddress]::HostToNetworkOrder($ipEnd)) | ForEach-Object { $_ } ) -join '.'
+        # return as tuple of strings:
+        ([BitConverter]::GetBytes([Net.IPAddress]::HostToNetworkOrder($ipStart)) | ForEach-Object { $_ } ) -join '.'
+        ([BitConverter]::GetBytes([Net.IPAddress]::HostToNetworkOrder($ipEnd)) | ForEach-Object { $_ } ) -join '.'
+    }
+    else {
+        $cidrNotation
+    }
 }
 function Test-DNS {
     <#
@@ -115,8 +127,10 @@ function Test-DNS {
     Verifies that DNS is working for a given URL and that the IP does not resolve a sinkhole (0.0.0.0 or 127.0.0.1 or ::).
 
     .DESCRIPTION
+    This function takes a URL, resolves it to an IP address, and checks that the resolved IP address is not a known sinkhole address
 
     .PARAMETER dnsTarget
+    The IP address or hostname to test DNS resolution for.
 
     #>
     param(
@@ -151,27 +165,20 @@ function Test-DNS {
 function Get-NetworkEndpoint() {
     <#
     .SYNOPSIS
-
+    Retrieves the list of network endpoints to test from a CSV file hosted on GitHub. If the retrieval fails, it falls back to a hardcoded list of endpoints within the script.
 
     .DESCRIPTION
-
+    This function attempts to download a CSV file containing the network endpoints to validate from a specified URL. If the download is successful, it parses the CSV content and returns it as a list of objects. If the download fails (e.g., due to network issues or an invalid URL), it logs a warning and uses a predefined list of network endpoints embedded in the script.
 
     .PARAMETER csvUrl
     The URL of the CSV file containing the network endpoints to validate.
-
-    .PARAMETER region
-    The region to filter the network endpoints by. Valid values are 'North America', 'Europe', and 'Asia Pacific'. If not specified, all regions will be included.
 
     #>
 
     param
     (
         [parameter(Mandatory = $false)]
-        [String]$csvUrl,
-
-        [parameter(Mandatory = $false)]
-        [ValidateSet('North America', 'Europe', 'Asia Pacific')]
-        [String]$region
+        [String]$csvUrl
     )
 
     try {
@@ -473,9 +480,29 @@ function Get-NetworkEndpoint() {
 function Test-NetworkEndpoint() {
     <#
     .SYNOPSIS
+    Tests connectivity to a specified network endpoint.
 
     .DESCRIPTION
+    This function tests the connectivity to a specified network endpoint by attempting to establish a connection using the specified protocol and port(s).
+    It supports TCP  protocols and can test individual ports or a range of ports.
 
+    .PARAMETER category
+    The category of the network endpoint, such as 'Windows Autopilot' or 'Microsoft Store'.
+
+    .PARAMETER subCategory
+    The subcategory of the network endpoint, such as 'WNS Dependencies' or 'Microsoft Store API'.
+
+    .PARAMETER address
+    The address of the network endpoint, which can be a hostname, an IP address, a CIDR range, or a wildcard domain.
+
+    .PARAMETER protocol
+    The protocol to use for testing connectivity, either 'TCP' or 'UDP'.
+
+    .PARAMETER ports
+    The port or ports to test, specified as a comma-separated string (e.g., '80, 443').
+
+    .PARAMETER testType
+    The type of test to perform when the address is a CIDR range. 'Lite' will test the CIDR as a whole, while 'Full' will test each IP in the CIDR range. Default is 'Lite'.
     #>
 
     param
@@ -502,8 +529,8 @@ function Test-NetworkEndpoint() {
     )
 
     begin {
-        $portSplits = @($ports.Split(',').Trim())
         $testItems = @()
+        $portSplits = @($ports.Split(',').Trim())
     }
     process {
         foreach ($portSplit in $portSplits) {
@@ -530,28 +557,35 @@ function Test-NetworkEndpoint() {
                     $testItems += @($testItem)
                 }
                 else {
-                    if ($testType -eq 'Lite') {
-                        $testItem.Status = 'IP'
-                        $ipAddress = ($testItem.address -split '/')[0]
-                        $testItem.address = $ipAddress
-                        $testItems += @($testItem)
-                    }
-                    if ($testType -eq 'Full') {
-                        $startIP = (Get-IPRangeFromCIDR -cidrNotation $address)[0]
-                        $endIP = (Get-IPRangeFromCIDR -cidrNotation $address)[1]
-
-                        foreach ($ip in $startIP..$endIP) {
-                            $ipAddress = ([BitConverter]::GetBytes([Net.IPAddress]::HostToNetworkOrder($ip)) | ForEach-Object { $_ } ) -join '.'
-
-                            $testItem = [PSCustomObject]@{
-                                Category    = $category
-                                SubCategory = $subCategory
-                                Address     = $ipAddress
-                                Protocol    = $protocol
-                                Port        = $port
-                                Status      = 'IP'
-                            }
+                    switch ($testType) {
+                        'Lite' {
+                            $testItem.Status = 'IP'
+                            $ipAddress = ($testItem.address -split '/')[0]
+                            $testItem.address = $ipAddress
                             $testItems += @($testItem)
+                        }
+                        'Full' {
+                            $startIP = (Get-IPRangeFromCIDR -cidrNotation $address)[0]
+                            $endIP = (Get-IPRangeFromCIDR -cidrNotation $address)[1]
+                            $startIPAddr = [Net.IPAddress]::Parse($startIP)
+                            $startIPNum = [Net.IPAddress]::NetworkToHostOrder([BitConverter]::ToInt32($startIPAddr.GetAddressBytes(), 0))
+                            $endIPAddr = [Net.IPAddress]::Parse($endIP)
+                            $endIPNum = [Net.IPAddress]::NetworkToHostOrder([BitConverter]::ToInt32($endIPAddr.GetAddressBytes(), 0))
+
+                            foreach ($ip in $startIPNum..$endIPNum) {
+                                $ipAddress = ([BitConverter]::GetBytes([Net.IPAddress]::HostToNetworkOrder($ip)) | ForEach-Object { $_ } ) -join '.'
+                                $testItem = [PSCustomObject]@{
+                                    Category    = $category
+                                    SubCategory = $subCategory
+                                    Address     = $ipAddress
+                                    Protocol    = $protocol
+                                    Port        = $port
+                                    Status      = 'IP'
+                                }
+                                $testItems += @($testItem)
+                            }
+                            default {}
+
                         }
                     }
                 }
@@ -565,74 +599,82 @@ function Test-NetworkEndpoint() {
     }
     end {
         foreach ($testItem in $testItems) {
-            switch ($testItem.Protocol) {
-                'TCP' {
-                    if ($testItem.Status -eq 'WILD') {
-                        Write-Host "`r [" -NoNewline
-                        Write-Host 'SKIP' -ForegroundColor Yellow -NoNewline
-                        Write-Host "] $($testItem.Address):$($testItem.Port)"
-                    }
-                    elseif ($testItem.Status -eq 'IPV6') {
-                        Write-Host "`r [" -NoNewline
-                        Write-Host 'IPV6' -ForegroundColor Magenta -NoNewline
-                        Write-Host "] $($testItem.Address):$($testItem.Port)"
-                    }
-                    elseif ($testItem.Status -eq 'IP') {
-                        $tcpClient = New-Object System.Net.Sockets.TcpClient
-                        $connect = $tcpClient.BeginConnect($($testItem.Address), $($testItem.Port), $null, $null)
-                        $waitTime = $connect.AsyncWaitHandle.WaitOne([TimeSpan]::FromSeconds($timeoutSecs), $false)
-                        if ($waitTime -and -not $tcpClient.Client.Poll(0, [System.Net.Sockets.SelectMode]::SelectError)) {
-                            $tcpClient.EndConnect($connect) 2>$null
-                            $testItem.Status = 'OK'
-                            Write-Host "`r [" -NoNewline
-                            Write-Host ' OK ' -ForegroundColor Green -NoNewline
-                            Write-Host "] $($testItem.Address):$($testItem.Port)"
-                        }
-                        else {
-                            $testItem.Status = 'FAIL'
-                            Write-Host "`r [" -NoNewline
-                            Write-Host 'FAIL' -ForegroundColor Red -NoNewline
-                            Write-Host "] $($testItem.Address):$($testItem.Port)"
-                        }
-                        $tcpClient.Close()
-                    }
-                    else {
-                        $dnsOK = Test-DNS -dnsTarget $testItem.Address
-                        switch ($dnsOK) {
-                            $true {
-                                $tcpClient = New-Object System.Net.Sockets.TcpClient
-                                $connect = $tcpClient.BeginConnect($($testItem.Address), $($testItem.Port), $null, $null)
-                                $waitTime = $connect.AsyncWaitHandle.WaitOne([TimeSpan]::FromSeconds($timeoutSecs), $false)
-                                if ($waitTime -and -not $tcpClient.Client.Poll(0, [System.Net.Sockets.SelectMode]::SelectError)) {
-                                    $tcpClient.EndConnect($connect) 2>$null
-                                    $testItem.Status = 'OK'
-                                    Write-Host "`r [" -NoNewline
-                                    Write-Host ' OK ' -ForegroundColor Green -NoNewline
-                                    Write-Host "] $($testItem.Address):$($testItem.Port)"
-                                }
-                                else {
-                                    $testItem.Status = 'FAIL'
-                                    Write-Host "`r [" -NoNewline
-                                    Write-Host 'FAIL' -ForegroundColor Red -NoNewline
-                                    Write-Host "] $($testItem.Address):$($testItem.Port)"
-                                }
-                                $tcpClient.Close()
-                            }
-                            $false {
-                                $testItem.Status = 'DNS'
-                                Write-Host "`r [" -NoNewline
-                                Write-Host 'FAIL' -ForegroundColor Red -NoNewline
-                                Write-Host "] $($testItem.Address):$($testItem.Port)"
-                            }
-                        }
-                    }
-                }
+            $tcpTest = $false
+            switch ($testItem.Status) {
                 'UDP' {
                     $testItem.Status = 'INFO'
                     Write-Host "`r [" -NoNewline
                     Write-Host "$($testItem.Status)" -ForegroundColor Cyan -NoNewline
                     Write-Host "] $($testItem.Address):$($testItem.Port)"
                 }
+                'WILD' {
+                    Write-Host "`r [" -NoNewline
+                    Write-Host 'SKIP' -ForegroundColor Yellow -NoNewline
+                    Write-Host "] $($testItem.Address):$($testItem.Port)"
+                }
+                'IPV6' {
+                    Write-Host "`r [" -NoNewline
+                    Write-Host 'SKIP' -ForegroundColor Magenta -NoNewline
+                    Write-Host "] $($testItem.Address):$($testItem.Port)"
+                }
+                'DNS' {
+                    $dnsOK = Test-DNS -dnsTarget $testItem.Address
+                    if ($dnsOK -eq $true) {
+                        try {
+                            switch ($testItem.Port) {
+                                '80' {
+                                    $iwrResult = (Invoke-WebRequest -Uri "http://$($testItem.Address)" -UseBasicParsing).StatusCode
+                                }
+                                '443' {
+                                    $iwrResult = (Invoke-WebRequest -Uri "https://$($testItem.Address)" -UseBasicParsing).StatusCode
+                                }
+                                default {
+                                    $iwrResult = (Invoke-WebRequest -Uri "http://$($testItem.Address):$($testItem.Port)" -UseBasicParsing).StatusCode
+                                }
+                            }
+                            if ($iwrResult -eq 200) {
+                                $testItem.Status = 'OK'
+                                Write-Host "`r [" -NoNewline
+                                Write-Host ' OK ' -ForegroundColor Green -NoNewline
+                                Write-Host "] $($testItem.Address):$($testItem.Port)"
+                            }
+                            else {
+                                $tcpTest = $true
+                            }
+                        }
+                        catch {
+                            $tcpTest = $true
+                        }
+                    }
+                    else {
+                        $testItem.Status = 'DNS'
+                        Write-Host "`r [" -NoNewline
+                        Write-Host 'FAIL' -ForegroundColor Red -NoNewline
+                        Write-Host "] $($testItem.Address):$($testItem.Port)"
+                    }
+                }
+                'IP' { $tcpTest = $true }
+                default { tcpTest = $true }
+            }
+
+            if ($tcpTest -eq $true) {
+                $tcpClient = New-Object System.Net.Sockets.TcpClient
+                $connect = $tcpClient.BeginConnect($($testItem.Address), $($testItem.Port), $null, $null)
+                $waitTime = $connect.AsyncWaitHandle.WaitOne([TimeSpan]::FromSeconds($timeoutSecs), $false)
+                if ($waitTime -and -not $tcpClient.Client.Poll(0, [System.Net.Sockets.SelectMode]::SelectError)) {
+                    $tcpClient.EndConnect($connect) 2>$null
+                    $testItem.Status = 'OK'
+                    Write-Host "`r [" -NoNewline
+                    Write-Host ' OK ' -ForegroundColor Green -NoNewline
+                    Write-Host "] $($testItem.Address):$($testItem.Port)"
+                }
+                else {
+                    $testItem.Status = 'FAIL'
+                    Write-Host "`r [" -NoNewline
+                    Write-Host 'FAIL' -ForegroundColor Red -NoNewline
+                    Write-Host "] $($testItem.Address):$($testItem.Port)"
+                }
+                $tcpClient.Close()
             }
         }
         return $testItems
@@ -641,8 +683,13 @@ function Test-NetworkEndpoint() {
 function Test-NetworkEndpointList () {
     <#
     .SYNOPSIS
+    Tests a list of network endpoints for connectivity.
 
     .DESCRIPTION
+    This function takes an array of network endpoints, tests connectivity to each endpoint using the Test-NetworkEndpoint function, and returns a consolidated list of results.
+
+    .PARAMETER networkEndpoints
+    An array of network endpoints to test, where each endpoint is a custom object with properties for Category, Subcategory, Endpoint, Protocol, and Ports.
 
     #>
     param
@@ -677,8 +724,13 @@ function Test-NetworkEndpointList () {
 function Get-NetworkEndpointSummary () {
     <#
     .SYNOPSIS
+    Generates a summary of network endpoint test results.
 
     .DESCRIPTION
+    This function takes an array of network endpoint test results, categorizes them by their status (OK, FAIL, WILD, INFO, IPV6, DNS), and generates a summary report that includes the total number of endpoints tested, the number of endpoints that passed, failed, were skipped due to wildcard domains, had informational status due to UDP protocol, had IPv6 addresses, or had DNS issues.
+
+    .PARAMETER networkEndpointResults
+    An array of network endpoint test results, where each result is a custom object with properties for Status, Address, Port, Protocol, Category, and Subcategory.
 
     #>
     param
@@ -802,8 +854,14 @@ function Get-NetworkEndpointSummary () {
 function Get-NetworkEndpointSummaryReport () {
     <#
     .SYNOPSIS
+    Generates CSV exports of summary report of network endpoint test results.
 
     .DESCRIPTION
+    This function takes an array of network endpoint summary results, where each result includes the status, address, port, protocol, category, and subcategory of the endpoint.
+    It generates a detailed report that lists the endpoints that failed connectivity tests.
+
+    .PARAMETER summaryResults
+    An array of network endpoint summary results, where each result is a custom object with properties for Status, Address, Port, Protocol, Category, and Subcategory.
 
     #>
     param
@@ -828,15 +886,15 @@ function Get-NetworkEndpointSummaryReport () {
 #endregion functions
 
 if ($region) {
-    Write-Host "Filtering network endpoints for region: $region" -ForegroundColor Magenta
-    $networkEndpoints = Get-NetworkEndpoint -csvUrl $networkEndpointsCSV -region $region
+    Write-Host "Getting all Global and $region-specific network endpoints." -ForegroundColor Cyan
+    $networkEndpoints = Get-NetworkEndpoint -csvUrl $networkEndpointsCSV | Where-Object { $_.Region -eq 'Global' -or $_.Region -eq $region }
 }
 else {
-    Write-Host 'Retrieving all network endpoints without region filtering.' -ForegroundColor Magenta
+    Write-Host 'Getting all Global network endpoints and all region network endpoints.' -ForegroundColor Cyan
     $networkEndpoints = Get-NetworkEndpoint -csvUrl $networkEndpointsCSV
 }
 
-$networkEndpoints | Export-Csv -Path '.\IntuneNetworkEndpoints.csv'-NoTypeInformation -Encoding UTF8 -Force
+#$networkEndpoints | Export-Csv -Path '.\IntuneNetworkEndpoints.csv'-NoTypeInformation -Encoding UTF8 -Force
 
 switch ($testScope) {
     'Autopilot' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsAutopilot } }
@@ -853,8 +911,7 @@ Write-Host ' network endpoints.' -ForegroundColor Green
 Write-Host "Test type: $testType" -ForegroundColor white
 Write-Host "Test scope: $testScope" -ForegroundColor White
 
-$allResults = @()
-$allResults += Test-NetworkEndpointList -networkEndpoints $networkEndpoints
+$allResults = Test-NetworkEndpointList -networkEndpoints $networkEndpoints
 $summaryResults = Get-NetworkEndpointSummary -networkEndpointResults $allResults
 if ($null -ne $summaryResults) {
     Get-NetworkEndpointSummaryReport -summaryResults $summaryResults
