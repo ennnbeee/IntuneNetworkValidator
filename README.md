@@ -13,6 +13,13 @@ IntuneNetworkValidator is currently in Public Preview, meaning that although the
 
 You can run the script to test different Intune Network Endpoints, regions, and carry out a lite or full validation of IP Address ranges. By default the script will test all scopes, regions, and a limited set of IP addresses within the full ranges available.
 
+- For endpoints with DNS entries:
+  - The script will check if the DNS entry is reachable before carrying out a test.
+  - The script will attempt to connect to the endpoint using `Invoke-WebRequest`.
+  - If the initial request fails, the script will attempt to connect to the endpoint using a TCP request.
+- For endpoints with IP address ranges:
+  - With **Lite** testType the script will use only the given IP address as part of the CIDR.
+  - With **Full** testType the script will test each IP address contained in the CIDR.
 - Use **testScope** to specify the scope of the test.
   - Selections from: `Autopilot`, `Apple`, `Android`, `W365`, `W365-Client`, `W365-CloudPC`, and `All` (default)
 - Use **testType** to specify whether an individual IP address in a range is tested, or full range is tested.
@@ -25,6 +32,9 @@ You can run the script to test different Intune Network Endpoints, regions, and 
 > [!IMPORTANT]
 >
 > - Supports PowerShell 5 and 7 on Windows
+> - UDP checks are not supported
+> - IPv6 checks are not supported
+> - Wildcard URL checks are note supported
 
 ## 🔄 Updates
 
