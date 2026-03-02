@@ -1,0 +1,4 @@
+"Status","Address","Port","Protocol","Category","Subcat","Notes"
+"INFO","time-ios.apple.com","123","UDP","Apple Endpoints","Device Setup",""
+"INFO","time.apple.com","123","UDP","Apple Endpoints","Device Setup",""
+"INFO","time-macos.apple.com","123","UDP","Apple Endpoints","Device Setup",""

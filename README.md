@@ -20,6 +20,7 @@ You can run the script to test different Intune Network Endpoints, regions, and 
 - For endpoints with IP address ranges:
   - With **Lite** testType the script will use only the given IP address as part of the CIDR.
   - With **Full** testType the script will test each IP address contained in the CIDR.
+- Once the script finishes it will export any endpoints that need further investigation to CSV.
 - Use **testScope** to specify the scope of the test.
   - Selections from: `Autopilot`, `Apple`, `Android`, `W365`, `W365-Client`, `W365-CloudPC`, and `All` (default)
 - Use **testType** to specify whether an individual IP address in a range is tested, or full range is tested.
