@@ -1,4 +1,4 @@
-# 📲 IntuneNetworkValidator
+# 🌐 IntuneNetworkValidator
 
 The IntuneNetworkValidator script is a PowerShell tool designed to allow for automatic testing of Intune Network Endpoints.
 
@@ -13,9 +13,12 @@ IntuneNetworkValidator is currently in Public Preview, meaning that although the
 
 You can run the script to test different Intune Network Endpoints, regions, and carry out a lite or full validation of IP Address ranges. By default the script will test all scopes, regions, and a limited set of IP addresses within the full ranges available.
 
-- Use **testScope** to specify the scope of the test, selections from: 'Autopilot', 'Apple', 'Android', 'W365', 'W365-Client', 'W365-CloudPC', and 'All' (Default)
+- Use **testScope** to specify the scope of the test.
+  - Selections from: `Autopilot`, `Apple`, `Android`, `W365`, `W365-Client`, `W365-CloudPC`, and `All` (default)
 - Use **testType** to specify whether an individual IP address in a range is tested, or full range is tested.
-- Use **region** to test the global and specific region Intune Network Endpoints from: 'North America', 'Europe', 'Australia', and 'Asia Pacific'
+  - Selections from: `Full` or `Lite` (default)
+- Use **region** to test the global and specific region Intune Network Endpoints.
+  - Selections from: `North America`, `Europe`, `Australia`, and `Asia Pacific`
 
 ## 🗒 Prerequisites
 
