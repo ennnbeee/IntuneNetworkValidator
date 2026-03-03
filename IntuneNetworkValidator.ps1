@@ -672,7 +672,6 @@ function Get-NetworkEndpoint() {
             [PSCustomObject]@{Id = '309'; Category = 'Apple Endpoints'; Subcategory = 'Business & School'; Endpoint = 'api.edu.apple.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Apps and Books (ASM)' }
             [PSCustomObject]@{Id = '309'; Category = 'Apple Endpoints'; Subcategory = 'Business & School'; Endpoint = 'statici.icloud.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Device icons' }
             [PSCustomObject]@{Id = '309'; Category = 'Apple Endpoints'; Subcategory = 'Business & School'; Endpoint = '*.vertexsmb.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Validating tax-exempt status' }
-            [PSCustomObject]@{Id = '309'; Category = 'Apple Endpoints'; Subcategory = 'Business & School'; Endpoint = 'upload.appleschoolcontent.com'; Protocol = 'SSH'; Ports = '22'; Region = 'Global'; Notes = 'SFTP uploads' }
             # ID 310 Apple Endpoints - Beta, Diagnostics and Other Services
             [PSCustomObject]@{Id = '310'; Category = 'Apple Endpoints'; Subcategory = 'Beta & Diagnostics'; Endpoint = 'bpapi.apple.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Beta update enrolment' }
             [PSCustomObject]@{Id = '310'; Category = 'Apple Endpoints'; Subcategory = 'Beta & Diagnostics'; Endpoint = 'cssubmissions.apple.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Feedback Assistant uploads' }
