@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.1.6
+.VERSION 0.1.7
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME odds+endpoints
@@ -13,6 +13,7 @@
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
+v0.1.7 - Support for testing Invoke-WebRequest using detected proxy
 v0.1.6 - Support for Apple and Android endpoints, included proxy detection
 v0.1.5 - Updated with AVD endpoints
 v0.1.4 - Updated CIDR function, changed testing logic for hostname endpoints
@@ -72,6 +73,14 @@ $idsW365CloudPC = @('207', '208', '163', '170', '204', '203', '164')
 $idsW365 = $idsW365Client + $idsW365CloudPC
 $idsApple = @('301', '302', '303', '304', '305', '311')
 $idsAndroid = @('401', '402', '403', '404', '405', '406')
+$testSummary = [PSCustomObject]@{
+    'Test scope'    = $testScope
+    'Test type'     = $testType
+    'Test region'   = 'Global'
+    'Proxy enabled' = 'No'
+    'Proxy address' = 'None'
+    'Proxy PAC'     = 'None'
+}
 #endregion variables
 
 #region functions
@@ -80,6 +89,7 @@ function Get-ProxyConfig {
         $proxyServer = [PSCustomObject]@{
             Enabled = 'No'
             Address = $null
+            PAC     = $null
         }
     }
     process {
@@ -95,15 +105,25 @@ function Get-ProxyConfig {
         #Check winInet proxy
         $winInet = Get-ItemProperty -Path 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings' -ErrorAction SilentlyContinue
         if ($null -ne $winInet) {
-            if ($winInet.ProxyEnable) {
+            if ($winInet.ProxyEnable -eq '1') {
                 $proxyServer.Enabled = 'Yes'
             }
             if ($winInet.ProxyServer) {
                 $proxyServer.Address = $winInet.ProxyServer
             }
             if ($winInet.AutoConfigURL) {
-                $proxyServer.Address = $winInet.AutoConfigURL
-                $proxyServer.Enabled = 'Yes'
+                $proxyServer.PAC = $winInet.AutoConfigURL
+                try {
+                    Invoke-WebRequest -Uri $proxyServer.PAC -UseBasicParsing -OutFile "$env:TEMP\proxy.pac" -ErrorAction SilentlyContinue
+                    $proxyPACFile = Get-Content "$env:TEMP\proxy.pac" -ErrorAction SilentlyContinue
+                    $proxyPACServer = $($proxyPACFile | Select-String 'var proxyServer').ToString().TrimStart('var proxyServer = "PROXY ').TrimEnd('";')
+                    $proxyServer.Address = 'http://' + $proxyPACServer
+                    $proxyServer.Enabled = 'Yes'
+                }
+                catch {
+                    $proxyServer.Enabled = 'No'
+                }
+
             }
         }
     }
@@ -289,7 +309,6 @@ function Get-NetworkEndpoint() {
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = '20.208.149.192/27'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = '20.208.157.128/27'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = '20.214.131.176/29'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
-            [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = '20.43.129.0/24'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = '20.91.147.72/29'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = '4.145.74.224/27'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = '4.150.254.64/27'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
@@ -321,7 +340,6 @@ function Get-NetworkEndpoint() {
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Azure Front Door Endpoints'; Endpoint = '2620:1ec:40::/48'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Azure Front Door Endpoints'; Endpoint = '2620:1ec:49::/48'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Azure Front Door Endpoints'; Endpoint = '2620:1ec:4a::/47'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
-
             # ID 172 MDM Delivery Optimization
             [PSCustomObject]@{Id = '172'; Category = 'Intune Core Service'; Subcategory = 'MDM Delivery Optimization'; Endpoint = '*.do.dsp.mp.microsoft.com'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '172'; Category = 'Intune Core Service'; Subcategory = 'MDM Delivery Optimization'; Endpoint = '*.dl.delivery.mp.microsoft.com'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
@@ -356,9 +374,6 @@ function Get-NetworkEndpoint() {
             # ID 59 Identity supporting services & CDNs.
             [PSCustomObject]@{Id = '59'; Category = 'Authentication Dependencies'; Subcategory = 'Identity Supporting Services'; Endpoint = 'enterpriseregistration.windows.net'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '59'; Category = 'Authentication Dependencies'; Subcategory = 'Identity Supporting Services'; Endpoint = 'certauth.enterpriseregistration.windows.net'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
-            # ID 172 MDM - Delivery Optimization Dependencies
-            [PSCustomObject]@{Id = '172'; Category = 'Delivery Optimization Dependencies'; Subcategory = 'Delivery Optimization'; Endpoint = '*.do.dsp.mp.microsoft.com'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
-            [PSCustomObject]@{Id = '172'; Category = 'Delivery Optimization Dependencies'; Subcategory = 'Delivery Optimization'; Endpoint = '*.dl.delivery.mp.microsoft.com'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             # ID 172 MEM - WNS Dependencies
             [PSCustomObject]@{Id = '172'; Category = 'Windows Push Notification Services'; Subcategory = 'WNS Dependencies'; Endpoint = '*.notify.windows.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '172'; Category = 'Windows Push Notification Services'; Subcategory = 'WNS Dependencies'; Endpoint = '*.wns.windows.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
@@ -418,7 +433,6 @@ function Get-NetworkEndpoint() {
             [PSCustomObject]@{Id = '201'; Category = 'Microsoft Store'; Subcategory = 'Microsoft Store API'; Endpoint = 'img-prod-cms-rt-microsoft-com.akamaized.net'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '201'; Category = 'Microsoft Store'; Subcategory = 'Microsoft Store API'; Endpoint = 'img-s-msn-com.akamaized.net'; Protocol = 'TCP'; Ports = '80'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '201'; Category = 'Microsoft Store'; Subcategory = 'Microsoft Store API'; Endpoint = 'livetileedge.dsx.mp.microsoft.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
-            [PSCustomObject]@{Id = '201'; Category = 'Microsoft Store'; Subcategory = 'Microsoft Store API'; Endpoint = '*.wns.windows.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '201'; Category = 'Microsoft Store'; Subcategory = 'Microsoft Store API'; Endpoint = 'storecatalogrevocation.storequality.microsoft.com'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '201'; Category = 'Microsoft Store'; Subcategory = 'Microsoft Store API'; Endpoint = 'manage.devcenter.microsoft.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '201'; Category = 'Microsoft Store'; Subcategory = 'Microsoft Store API'; Endpoint = 'share.microsoft.com'; Protocol = 'TCP'; Ports = '80'; Region = 'Global'; Notes = '' }
@@ -905,19 +919,40 @@ function Test-NetworkEndpoint() {
                     $dnsOK = Test-DNS -dnsTarget $testItem.Address
                     if ($dnsOK -eq $true) {
                         try {
-                            switch ($testItem.Port) {
-                                '80' {
-                                    $iwrResult = (Invoke-WebRequest -Uri "http://$($testItem.Address)" -UseBasicParsing -ConnectionTimeoutSeconds $timeoutSecs -SkipCertificateCheck).StatusCode
-                                }
-                                '443' {
-                                    $iwrResult = (Invoke-WebRequest -Uri "https://$($testItem.Address)" -UseBasicParsing -ConnectionTimeoutSeconds $timeoutSecs -SkipCertificateCheck).StatusCode
-                                }
-                                default {
-                                    $iwrResult = (Invoke-WebRequest -Uri "http://$($testItem.Address):$($testItem.Port)" -UseBasicParsing -ConnectionTimeoutSeconds $timeoutSecs -SkipCertificateCheck).StatusCode
+                            if ($script:proxy.Address -ne 'NoProxy') {
+                                switch ($testItem.Port) {
+                                    '80' {
+                                        $iwrResult = (Invoke-WebRequest -Uri "http://$($testItem.Address)" -UseBasicParsing -ConnectionTimeoutSeconds $timeoutSecs -SkipCertificateCheck -Proxy $($script:proxy.Address)).StatusCode
+                                    }
+                                    '443' {
+                                        $iwrResult = (Invoke-WebRequest -Uri "https://$($testItem.Address)" -UseBasicParsing -ConnectionTimeoutSeconds $timeoutSecs -SkipCertificateCheck -Proxy $($script:proxy.Address)).StatusCode
+                                    }
+                                    default {
+                                        $iwrResult = (Invoke-WebRequest -Uri "http://$($testItem.Address):$($testItem.Port)" -UseBasicParsing -ConnectionTimeoutSeconds $timeoutSecs -SkipCertificateCheck -Proxy $($script:proxy.Address)).StatusCode
+                                    }
                                 }
                             }
+                            else {
+                                switch ($testItem.Port) {
+                                    '80' {
+                                        $iwrResult = (Invoke-WebRequest -Uri "http://$($testItem.Address)" -UseBasicParsing -ConnectionTimeoutSeconds $timeoutSecs -SkipCertificateCheck).StatusCode
+                                    }
+                                    '443' {
+                                        $iwrResult = (Invoke-WebRequest -Uri "https://$($testItem.Address)" -UseBasicParsing -ConnectionTimeoutSeconds $timeoutSecs -SkipCertificateCheck).StatusCode
+                                    }
+                                    default {
+                                        $iwrResult = (Invoke-WebRequest -Uri "http://$($testItem.Address):$($testItem.Port)" -UseBasicParsing -ConnectionTimeoutSeconds $timeoutSecs -SkipCertificateCheck).StatusCode
+                                    }
+                                }
+                            }
+
                             if ($iwrResult -eq 200) {
-                                $testItem.Status = 'OK'
+                                if ($script:proxy.Address -ne 'NoProxy') {
+                                    $testItem.Status = 'PROXY'
+                                }
+                                else {
+                                    $testItem.Status = 'OK'
+                                }
                                 Write-Host "`r [" -NoNewline
                                 Write-Host ' OK ' -ForegroundColor Green -NoNewline
                                 Write-Host "] $($testItem.Address):$($testItem.Port)"
@@ -1027,6 +1062,7 @@ function Get-NetworkEndpointSummary () {
         $summary = [PSCustomObject]@{
             'Total'   = $null
             'Passed'  = $null
+            'Proxied' = $null
             'Failed'  = $null
             'Skipped' = $null
             'Info'    = $null
@@ -1035,7 +1071,9 @@ function Get-NetworkEndpointSummary () {
         }
     }
     process {
+        $networkEndpointResults = $networkEndpointResults | Sort-Object -Unique -Property Address, Port, Protocol
         $summaryOK = $networkEndpointResults | Where-Object { $_.Status -eq 'OK' }
+        $summaryProxy = $networkEndpointResults | Where-Object { $_.Status -eq 'PROXY' }
         $summaryWild = $networkEndpointResults | Where-Object { $_.Status -eq 'WILD' }
         $summaryIPv6 = $networkEndpointResults | Where-Object { $_.Status -eq 'IPV6' }
         $summaryInfo = $networkEndpointResults | Where-Object { $_.Status -eq 'INFO' }
@@ -1047,6 +1085,7 @@ function Get-NetworkEndpointSummary () {
     end {
         $summary.Total = [int]($networkEndpointResults | Where-Object { $_ -notin $summaryFailOK } | Measure-Object).Count
         $summary.Passed = [int]($summaryOK | Measure-Object).Count
+        $summary.Proxied = [int]($summaryProxy | Measure-Object).Count
         $summary.Failed = [int]($summaryFail | Measure-Object).Count
         $summary.Skipped = [int]($summaryWild | Measure-Object).Count
         $summary.Info = [int]($summaryInfo | Measure-Object).Count
@@ -1074,7 +1113,7 @@ function Get-NetworkEndpointSummary () {
             }
         }
         if ($summary.DNS -gt 0) {
-            Write-Host "`n$($summary.DNS) Endpoint(s) failed due to DNS issues:" -ForegroundColor DarkYellow
+            Write-Host "`n$($summary.DNS) Endpoint(s) failed due to DNS issues:" -ForegroundColor Red
             $summaryDNS | ForEach-Object {
                 $padding = [string]::new(' ', [Math]::Max(0, 60 - ($($($_.Address + ':' + $_.Port)).Length)))
                 Write-Host "$($_.Address + ':' + $_.Port)" -ForegroundColor White -NoNewline
@@ -1091,8 +1130,26 @@ function Get-NetworkEndpointSummary () {
                 }
             }
         }
+        if ($summary.Proxied -gt 0) {
+            Write-Host "$($summary.Proxied) Endpoint(s) passed via proxy, please check for SSL inspection:" -ForegroundColor Yellow
+            $summaryProxy | ForEach-Object {
+                $padding = [string]::new(' ', [Math]::Max(0, 60 - ($($($_.Address + ':' + $_.Port)).Length)))
+                Write-Host "$($_.Address + ':' + $_.Port)" -ForegroundColor White -NoNewline
+                Write-Host "$padding($($_.Category) > $($_.Subcategory))" -ForegroundColor DarkCyan
+
+                $export += [PSCustomObject]@{
+                    Status   = $_.Status
+                    Address  = $_.Address
+                    Port     = $_.Port
+                    Protocol = $_.Protocol
+                    Category = $_.Category
+                    Subcat   = $_.Subcategory
+                    Notes    = $_.Notes
+                }
+            }
+        }
         if ($summary.Skipped -gt 0) {
-            Write-Host "`n$($summary.Skipped) Endpoint(s) skipped due to wildcard domain, please check these manually:" -ForegroundColor Yellow
+            Write-Host "`n$($summary.Skipped) Endpoint(s) skipped due to wildcard domain, please check these manually:" -ForegroundColor Magenta
             $summaryWild | ForEach-Object {
                 $padding = [string]::new(' ', [Math]::Max(0, 60 - ($($($_.Address + ':' + $_.Port)).Length)))
                 Write-Host "$($_.Address + ':' + $_.Port)" -ForegroundColor White -NoNewline
@@ -1110,7 +1167,7 @@ function Get-NetworkEndpointSummary () {
             }
         }
         if ($summary.Info -gt 0) {
-            Write-Host "`n$($summary.Info) Endpoint(s) skipped due to UDP protocol, please check these manually:" -ForegroundColor Cyan
+            Write-Host "`n$($summary.Info) Endpoint(s) skipped due to UDP protocol, please check these manually:" -ForegroundColor Magenta
             $summaryInfo | ForEach-Object {
                 $padding = [string]::new(' ', [Math]::Max(0, 60 - ($($($_.Address + ':' + $_.Port)).Length)))
                 Write-Host "$($_.Address + ':' + $_.Port)" -ForegroundColor White -NoNewline
@@ -1209,41 +1266,44 @@ Write-Host '
 
 Write-Host 'IntuneNetworkValidator - Automatically checks Microsoft Intune network endpoints.' -ForegroundColor Green
 Write-Host "`nNick Benton - oddsandendpoints.co.uk" -NoNewline;
-Write-Host ' | Version' -NoNewline; Write-Host ' 0.1.6 Public Preview' -ForegroundColor Yellow -NoNewline
-Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-03-02' -ForegroundColor Magenta
+Write-Host ' | Version' -NoNewline; Write-Host ' 0.1.7 Public Preview' -ForegroundColor Yellow -NoNewline
+Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-03-03' -ForegroundColor Magenta
 Write-Host "`nIf you have any feedback, open an issue at https://github.com/ennnbeee/IntuneNetworkValidator/issues" -ForegroundColor Cyan
 Start-Sleep -Seconds $timeoutSecs
 #endregion intro
 
 #region script
+$script:proxy = Get-ProxyConfig
+$testSummary.'Proxy enabled' = $script:proxy.Enabled
+$testSummary.'Proxy address' = $script:proxy.Address
+if ($null -ne $script:proxy.PAC) {
+    $testSummary.'Proxy PAC' = $script:proxy.PAC
+}
+
 if ($region) {
     Write-Host "`nGetting all Global and $region-specific network endpoints." -ForegroundColor White
-    $networkEndpoints = Get-NetworkEndpoint -csvUrl $networkEndpointsCSV | Where-Object { $_.Region -eq 'Global' -or $_.Region -eq $region }
+    $script:networkEndpointsAll = Get-NetworkEndpoint -csvUrl $networkEndpointsCSV | Where-Object { $_.Region -eq 'Global' -or $_.Region -eq $region }
+    $testSummary.'Test region' = "Global and $region"
 }
 else {
     Write-Host "`nGetting all Global network endpoints and all region network endpoints." -ForegroundColor White
-    $networkEndpoints = Get-NetworkEndpoint -csvUrl $networkEndpointsCSV
+    $script:networkEndpointsAll = Get-NetworkEndpoint -csvUrl $networkEndpointsCSV
 }
 
 switch ($testScope) {
-    'Autopilot' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsAutopilot } }
-    'W365' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsW365 } }
-    'W365-CloudPC' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsW365CloudPC } }
-    'W365-Client' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsW365Client } }
-    'Apple' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsApple } }
-    'Android' { $networkEndpoints = $networkEndpoints | Where-Object { $_.Id -in $idsAndroid } }
-    default { }
+    'Autopilot' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsAutopilot } }
+    'W365' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsW365 } }
+    'W365-CloudPC' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsW365CloudPC } }
+    'W365-Client' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsW365Client } }
+    'Apple' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsApple } }
+    'Android' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsAndroid } }
+    default { $networkEndpoints = $script:networkEndpointsAll }
 }
-$proxy = Get-ProxyConfig
+
 Write-Host "`nTesting connectivity to $($networkEndpoints.Count) network endpoints." -ForegroundColor Green
-Write-Host "Test scope: $testScope" -ForegroundColor White
-Write-Host "Test region: $region" -ForegroundColor White
-Write-Host "Test type: $testType" -ForegroundColor white
-Write-Host "Proxy enabled: $($proxy.Enabled)" -ForegroundColor white
-Write-Host "Proxy address: $($proxy.Address)" -ForegroundColor white
+$testSummary
 
 $allResults = Test-NetworkEndpointList -networkEndpoints $networkEndpoints
-
 Write-Host "`nTesting Results"
 $summaryResults = Get-NetworkEndpointSummary -networkEndpointResults $allResults
 if ($null -ne $summaryResults) {
