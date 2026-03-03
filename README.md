@@ -16,6 +16,7 @@ You can run the script to test different Intune Network Endpoints, regions, and 
 - For endpoints with DNS entries:
   - The script will check if the DNS entry is reachable before carrying out a test.
   - The script will attempt to connect to the endpoint using `Invoke-WebRequest`.
+  - For environments where a proxy is in use the script will attempt to use the proxy to connect using `Invoke-WebRequest`.
   - If the initial request fails, the script will attempt to connect to the endpoint using a TCP request.
 - For endpoints with IP address ranges:
   - With **Lite** testType the script will use only the given IP address as part of the CIDR.
@@ -35,11 +36,11 @@ You can run the script to test different Intune Network Endpoints, regions, and 
 > - Supports PowerShell 5 and 7 on Windows
 > - UDP checks are not supported
 > - IPv6 checks are not supported
-> - Wildcard URL checks are note supported
+> - Wildcard URL checks are not supported
 
 ## 🔄 Updates
 
-- **v0.1.6**
+- **v0.1.7**
   - Initial release
 
 ## ⏯ Usage
