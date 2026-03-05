@@ -1,7 +1,0 @@
-"Status","Address","Port","Protocol","Category","Subcat","Notes"
-"IPV6","2620:1ec:40::/48","443","TCP","Intune Core Service","Azure Front Door Endpoints",""
-"IPV6","2620:1ec:40::/48","80","TCP","Intune Core Service","Azure Front Door Endpoints",""
-"IPV6","2620:1ec:49::/48","443","TCP","Intune Core Service","Azure Front Door Endpoints",""
-"IPV6","2620:1ec:49::/48","80","TCP","Intune Core Service","Azure Front Door Endpoints",""
-"IPV6","2620:1ec:4a::/47","443","TCP","Intune Core Service","Azure Front Door Endpoints",""
-"IPV6","2620:1ec:4a::/47","80","TCP","Intune Core Service","Azure Front Door Endpoints",""
