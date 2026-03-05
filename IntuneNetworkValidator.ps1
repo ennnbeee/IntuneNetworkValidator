@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.1.7
+.VERSION 0.1.8
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME odds+endpoints
@@ -13,6 +13,7 @@
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
+v0.1.8 - Support for Windows scope testing
 v0.1.7 - Support for testing Invoke-WebRequest using detected proxy
 v0.1.6 - Support for Apple and Android endpoints, included proxy detection
 v0.1.5 - Updated with AVD endpoints
@@ -35,7 +36,7 @@ The script tests both network connectivity and DNS resolution for each endpoint 
 
 .PARAMETER testScope
 Scope of the network endpoints to test specific to the technology required. Leave blank to test all endpoints.
-Valid values are 'Autopilot', 'Apple', 'Android 'W365' for All Windows 365 connectivity, 'W365-Client' for Windows 365 client connectivity, 'W365-CloudPC' for Windows 365 Cloud PC backend connectivity, and 'All' for all endpoints.
+Valid values are 'Autopilot', 'Apple', 'Android', 'Windows', 'W365' for All Windows 365 connectivity, 'W365-Client' for Windows 365 client connectivity, 'W365-CloudPC' for Windows 365 Cloud PC backend connectivity, and 'All' for all endpoints.
 
 .PARAMETER region
 Region specific endpoints in addition to the global network endpoints. Valid values are 'North America', 'Europe', 'Australia', and 'Asia Pacific'.
@@ -52,7 +53,7 @@ The type of test to perform. 'Lite' will test a single IP address, while 'Full' 
 
 param(
     [Parameter(Mandatory = $false, HelpMessage = 'The scope of the test.')]
-    [ValidateSet('Autopilot', 'Apple', 'Android', 'W365', 'W365-Client', 'W365-CloudPC', 'All')]
+    [ValidateSet('Autopilot', 'Apple', 'Android', 'Windows', 'W365', 'W365-Client', 'W365-CloudPC', 'All')]
     [String]$testScope = 'All',
 
     [Parameter(Mandatory = $false, HelpMessage = 'Valid values are North America, Europe, Australia, and Asia Pacific.')]
@@ -68,6 +69,7 @@ param(
 $timeoutSecs = 2
 $networkEndpointsCSV = 'https://raw.githubusercontent.com/ennnbeee/IntuneNetworkValidator/main/INV-Endpoints.csv'
 $idsAutopilot = @('170', '172', '56', '164', '201', '203', '204', '163')
+$idsWindows = @('170', '172', '56', '164', '201', '203', '204', '205', '163')
 $idsW365Client = @('209', '210')
 $idsW365CloudPC = @('207', '208', '163', '170', '204', '203', '164')
 $idsW365 = $idsW365Client + $idsW365CloudPC
@@ -1239,7 +1241,7 @@ function Get-NetworkEndpointSummaryReport () {
 }
 #endregion functions
 
-#$networkEndpoints | Export-Csv -Path '.\INV-Endpoints.csv'-NoTypeInformation -Encoding UTF8 -Force
+#$script:networkEndpointsAll | Export-Csv -Path '.\INV-Endpoints.csv'-NoTypeInformation -Encoding UTF8 -Force
 
 #region intro
 Clear-Host
@@ -1265,8 +1267,8 @@ Write-Host '
 
 Write-Host 'IntuneNetworkValidator - Automatically checks Microsoft Intune network endpoints.' -ForegroundColor Green
 Write-Host "`nNick Benton - oddsandendpoints.co.uk" -NoNewline;
-Write-Host ' | Version' -NoNewline; Write-Host ' 0.1.7 Public Preview' -ForegroundColor Yellow -NoNewline
-Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-03-03' -ForegroundColor Magenta
+Write-Host ' | Version' -NoNewline; Write-Host ' 0.1.8 Public Preview' -ForegroundColor Yellow -NoNewline
+Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-03-05' -ForegroundColor Magenta
 Write-Host "`nIf you have any feedback, open an issue at https://github.com/ennnbeee/IntuneNetworkValidator/issues" -ForegroundColor Cyan
 Start-Sleep -Seconds $timeoutSecs
 #endregion intro
@@ -1296,6 +1298,7 @@ switch ($testScope) {
     'W365-Client' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsW365Client } }
     'Apple' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsApple } }
     'Android' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsAndroid } }
+    'Windows' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsWindows } }
     default { $networkEndpoints = $script:networkEndpointsAll }
 }
 
