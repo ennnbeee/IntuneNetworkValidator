@@ -198,7 +198,7 @@ function Test-DNS {
     #>
     param(
         [parameter(Mandatory = $true)]
-        [string]$dnsTarget
+        [string]$dnsTarget = 'www.google.com'
     )
 
     $dnsResult = $true
@@ -212,8 +212,8 @@ function Test-DNS {
     else {
         $resolvedDNSRecords = Resolve-DnsName -Name $dnsTarget -ErrorAction SilentlyContinue
         if ($resolvedDNSRecords.count) {
-            $dnsARecords = resolvedDNSRecords.IP4Address
-            $dnsAAAARecords = resolvedDNSRecords.IP6Address
+            $dnsARecords = $resolvedDNSRecords.IP4Address
+            $dnsAAAARecords = $resolvedDNSRecords.IP6Address
         }
         else {
             $dnsResult = $false
