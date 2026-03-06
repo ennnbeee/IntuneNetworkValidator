@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.1.8
+.VERSION 0.2.0
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME odds+endpoints
@@ -9,10 +9,11 @@
 .LICENSEURI https://github.com/ennnbeee/IntuneNetworkValidator/blob/main/LICENSE
 .PROJECTURI https://github.com/ennnbeee/IntuneNetworkValidator
 .ICONURI https://raw.githubusercontent.com/ennnbeee/IntuneNetworkValidator/refs/heads/main/img/inv-icon.png
-.EXTERNALMODULEDEPENDENCIES DnsClient
+.EXTERNALMODULEDEPENDENCIES DnsClient Microsoft.PowerShell.Utility
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
+v0.2.0 - Support for testing on macOS in PowerShell Core
 v0.1.8 - Support for Windows scope testing
 v0.1.7 - Support for testing Invoke-WebRequest using detected proxy
 v0.1.6 - Support for Apple and Android endpoints, included proxy detection
@@ -66,6 +67,7 @@ param(
 )
 
 #region variables
+$script:os = [System.Environment]::OSVersion.Platform
 $timeoutSecs = 2
 $networkEndpointsCSV = 'https://raw.githubusercontent.com/ennnbeee/IntuneNetworkValidator/main/INV-Endpoints.csv'
 $idsAutopilot = @('170', '172', '56', '164', '201', '203', '204', '163')
@@ -90,8 +92,8 @@ function Get-ProxyConfig {
     begin {
         $proxyServer = [PSCustomObject]@{
             Enabled = 'No'
-            Address = $null
-            PAC     = $null
+            Address = 'None'
+            PAC     = 'None'
         }
     }
     process {
@@ -99,7 +101,7 @@ function Get-ProxyConfig {
         $proxy = $winHTTP | Select-String server
         $proxyString = $Proxy.ToString().TrimStart('Proxy Server(s) :  ')
         if ($proxyString -like '*no proxy*') {
-            $proxyServer.Address = 'NoProxy'
+            $proxyServer.Address = 'None'
         }
         if ( ($proxyString -notlike '*no proxy*') -and (-not($proxyString.StartsWith('http://')))) {
             $proxyServer.Address = 'http://' + $proxyString
@@ -125,7 +127,6 @@ function Get-ProxyConfig {
                 catch {
                     $proxyServer.Enabled = 'No'
                 }
-
             }
         }
     }
@@ -197,29 +198,40 @@ function Test-DNS {
     #>
     param(
         [parameter(Mandatory = $true)]
-        [string]$dnsTarget
+        [string]$dnsTarget = 'sinwns1011421.wns.windows.com'
     )
 
     $dnsResult = $true
-    $resolvedDNSRecords = Resolve-DnsName -Name $dnsTarget -ErrorAction SilentlyContinue
-    if ($resolvedDNSRecords.count) {
-        foreach ($dnsARecord in $resolvedDNSRecords.IP4Address) {
-            if ($dnsARecord.IP4Address) {
-                if ($dnsARecord -eq '0.0.0.0' -or $dnsARecord -eq '127.0.0.1') {
-                    $dnsResult = $false
-                    break
-                }
-            }
+    if ($script:os -eq 'Unix') {
+        $dnsARecords = & dig +short A $dnsTarget 2>$null
+        $dnsAAAARecords = & dig +short AAAA $dnsTarget 2>$null
+        if ($dnsARecords.count -eq 0 -and $dnsAAAARecords.count -eq 0) {
+            $dnsResult = $false
         }
-        foreach ($dnsAAAARecord in $resolvedDNSRecords.IP6Address) {
-            if ($dnsAAAARecord -eq '::') {
+    }
+    else {
+        $resolvedDNSRecords = Resolve-DnsName -Name $dnsTarget -ErrorAction SilentlyContinue
+        if ($resolvedDNSRecords.count) {
+            $dnsARecords = resolvedDNSRecords.IP4Address
+            $dnsAAAARecords = resolvedDNSRecords.IP6Address
+        }
+        else {
+            $dnsResult = $false
+        }
+    }
+    foreach ($dnsARecord in $dnsARecords) {
+        if ($dnsARecord) {
+            if ($dnsARecord -eq '0.0.0.0' -or $dnsARecord -eq '127.0.0.1') {
                 $dnsResult = $false
                 break
             }
         }
     }
-    else {
-        $dnsResult = $false
+    foreach ($dnsAAAARecord in $dnsAAAARecords) {
+        if ($dnsAAAARecord -eq '::') {
+            $dnsResult = $false
+            break
+        }
     }
     return $dnsResult
 }
@@ -920,7 +932,7 @@ function Test-NetworkEndpoint() {
                     $dnsOK = Test-DNS -dnsTarget $testItem.Address
                     if ($dnsOK -eq $true) {
                         try {
-                            if ($script:proxy.Address -ne 'NoProxy') {
+                            if ($null -ne $script:proxy.Address -and $script:proxy.Address -ne 'None') {
                                 switch ($testItem.Port) {
                                     '80' {
                                         $iwrResult = (Invoke-WebRequest -Uri "http://$($testItem.Address)" -UseBasicParsing -ConnectionTimeoutSeconds $timeoutSecs -SkipCertificateCheck -Proxy $($script:proxy.Address)).StatusCode
@@ -948,7 +960,7 @@ function Test-NetworkEndpoint() {
                             }
 
                             if ($iwrResult -eq 200) {
-                                if ($script:proxy.Address -ne 'NoProxy') {
+                                if ($null -ne $script:proxy.Address -and $script:proxy.Address -ne 'None') {
                                     $testItem.Status = 'PROXY'
                                 }
                                 else {
@@ -1132,7 +1144,7 @@ function Get-NetworkEndpointSummary () {
             }
         }
         if ($summary.Proxied -gt 0) {
-            Write-Host "$($summary.Proxied) Endpoint(s) passed via proxy, please check for SSL inspection:" -ForegroundColor Yellow
+            Write-Host "`n$($summary.Proxied) Endpoint(s) passed via proxy, please check for SSL inspection:" -ForegroundColor Yellow
             $summaryProxy | ForEach-Object {
                 $padding = [string]::new(' ', [Math]::Max(0, 60 - ($($($_.Address + ':' + $_.Port)).Length)))
                 Write-Host "$($_.Address + ':' + $_.Port)" -ForegroundColor White -NoNewline
@@ -1267,18 +1279,20 @@ Write-Host '
 
 Write-Host 'IntuneNetworkValidator - Automatically checks Microsoft Intune network endpoints.' -ForegroundColor Green
 Write-Host "`nNick Benton - oddsandendpoints.co.uk" -NoNewline;
-Write-Host ' | Version' -NoNewline; Write-Host ' 0.1.8 Public Preview' -ForegroundColor Yellow -NoNewline
-Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-03-05' -ForegroundColor Magenta
+Write-Host ' | Version' -NoNewline; Write-Host ' 0.2.0 Public Preview' -ForegroundColor Yellow -NoNewline
+Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-03-06' -ForegroundColor Magenta
 Write-Host "`nIf you have any feedback, open an issue at https://github.com/ennnbeee/IntuneNetworkValidator/issues" -ForegroundColor Cyan
 Start-Sleep -Seconds $timeoutSecs
 #endregion intro
 
 #region script
-$script:proxy = Get-ProxyConfig
-$testSummary.'Proxy enabled' = $script:proxy.Enabled
-$testSummary.'Proxy address' = $script:proxy.Address
-if ($null -ne $script:proxy.PAC) {
-    $testSummary.'Proxy PAC' = $script:proxy.PAC
+if ($script:os -ne 'Unix') {
+    $script:proxy = Get-ProxyConfig
+    $testSummary.'Proxy enabled' = $script:proxy.Enabled
+    $testSummary.'Proxy address' = $script:proxy.Address
+    if ($null -ne $script:proxy.PAC) {
+        $testSummary.'Proxy PAC' = $script:proxy.PAC
+    }
 }
 
 if ($region) {

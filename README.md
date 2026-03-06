@@ -34,13 +34,16 @@ You can run the script to test different Intune Network Endpoints, regions, and 
 > [!IMPORTANT]
 >
 > - Supports PowerShell 5 and 7 on Windows
+> - Supports PowerShell 7 on macOS
 > - UDP checks are not supported
 > - IPv6 checks are not supported
 > - Wildcard URL checks are not supported
 
 ## 🔄 Updates
 
-- **v0.1.8**
+- **v0.2.0**
+  - Updated to support testing from macOS using PowerShell Core
+- v0.1.8
   - Initial release
 
 ## ⏯ Usage
