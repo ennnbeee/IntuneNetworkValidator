@@ -198,7 +198,7 @@ function Test-DNS {
     #>
     param(
         [parameter(Mandatory = $true)]
-        [string]$dnsTarget = 'www.google.com'
+        [string]$dnsTarget
     )
 
     $dnsResult = $true
