@@ -198,7 +198,7 @@ function Test-DNS {
     #>
     param(
         [parameter(Mandatory = $true)]
-        [string]$dnsTarget = 'sinwns1011421.wns.windows.com'
+        [string]$dnsTarget
     )
 
     $dnsResult = $true
