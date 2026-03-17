@@ -41,12 +41,20 @@ You can run the script to test different Intune Network Endpoints, regions, and 
 
 ## 🔄 Updates
 
-- **v0.2.0**
+- **v0.2.1**
+  - Available in the PowerShell gallery
+- v0.2.0
   - Updated to support testing from macOS using PowerShell Core
 - v0.1.8
   - Initial release
 
 ## ⏯ Usage
+
+Install the script from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IntuneNetworkValidator)
+
+```PowerShell
+Install-Script -Name IntuneNetworkValidator
+```
 
 Running the script without any parameters will perform a Lite test for all Intune Network Endpoints for all regions:
 
