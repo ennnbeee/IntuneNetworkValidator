@@ -261,7 +261,7 @@ function Get-NetworkEndpoint() {
     catch {
         $networkEndpoints = @(
             # ID 163 Intune client and host service
-            [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = '*.manage.microsoft.com'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
+            [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = '*.manage.microsoft.com'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = 'Wildcard' }
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = 'manage.microsoft.com'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = '*.dm.microsoft.com'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = 'No SSL Inspection' }
             [PSCustomObject]@{Id = '163'; Category = 'Intune Core Service'; Subcategory = 'Intune Client and Host Service'; Endpoint = 'EnterpriseEnrollment.manage.microsoft.com'; Protocol = 'TCP'; Ports = '80, 443'; Region = 'Global'; Notes = '' }

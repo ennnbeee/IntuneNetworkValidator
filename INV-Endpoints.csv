@@ -1,5 +1,5 @@
 "Id","Category","Subcategory","Endpoint","Protocol","Ports","Region","Notes"
-"163","Intune Core Service","Intune Client and Host Service","*.manage.microsoft.com","TCP","80, 443","Global",""
+"163","Intune Core Service","Intune Client and Host Service","*.manage.microsoft.com","TCP","80, 443","Global","Wildcard"
 "163","Intune Core Service","Intune Client and Host Service","manage.microsoft.com","TCP","80, 443","Global",""
 "163","Intune Core Service","Intune Client and Host Service","*.dm.microsoft.com","TCP","80, 443","Global","No SSL Inspection"
 "163","Intune Core Service","Intune Client and Host Service","EnterpriseEnrollment.manage.microsoft.com","TCP","80, 443","Global",""
