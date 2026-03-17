@@ -48,7 +48,7 @@ You can run the script to test different Intune Network Endpoints, regions, and 
 
 ## ⏯ Usage
 
-Running the script without any parameters will perform a Lite test for all Intune Network Endpoints for all regionds:
+Running the script without any parameters will perform a Lite test for all Intune Network Endpoints for all regions:
 
 ```PowerShell
 .\IntuneNetworkValidator.ps1
