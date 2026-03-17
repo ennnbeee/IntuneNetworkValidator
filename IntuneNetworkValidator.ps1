@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.2.0
+.VERSION 0.2.1
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME odds+endpoints
@@ -13,6 +13,7 @@
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
+v0.2.1 - Tagged endpoints that require SSL inspection
 v0.2.0 - Support for testing on macOS in PowerShell Core
 v0.1.8 - Support for Windows scope testing
 v0.1.7 - Support for testing Invoke-WebRequest using detected proxy
