@@ -41,7 +41,9 @@ You can run the script to test different Intune Network Endpoints, regions, and 
 
 ## 🔄 Updates
 
-- **v0.2.1**
+- **v0.2.2**
+  - Updated output location of CSV exports
+- v0.2.1
   - Available in the PowerShell gallery
 - v0.2.0
   - Updated to support testing from macOS using PowerShell Core

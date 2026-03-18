@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.2.1
+.VERSION 0.2.2
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME odds+endpoints
@@ -13,6 +13,7 @@
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
+v0.2.2 - Updated location of CSV exported files
 v0.2.1 - Tagged endpoints that require SSL inspection
 v0.2.0 - Support for testing on macOS in PowerShell Core
 v0.1.8 - Support for Windows scope testing
@@ -69,6 +70,11 @@ param(
 
 #region variables
 $script:os = [System.Environment]::OSVersion.Platform
+switch ($script:os) {
+    'Win32NT' { $script:reportPath = "$env:USERPROFILE\Documents" }
+    'Unix' { $script:reportPath = "$HOME/Documents" }
+    Default { $script:reportPath = "$env:USERPROFILE\Documents" }
+}
 $timeoutSecs = 2
 $networkEndpointsCSV = 'https://raw.githubusercontent.com/ennnbeee/IntuneNetworkValidator/main/INV-Endpoints.csv'
 $idsAutopilot = @('170', '172', '56', '164', '201', '203', '204', '163')
@@ -1245,7 +1251,8 @@ function Get-NetworkEndpointSummaryReport () {
     }
     process {
         foreach ($statusCategory in $statusCategories) {
-            ($summaryResults | Where-Object { $_.Status -eq $statusCategory }) | Export-Csv -Path ".\INV-Report-$statusCategory.csv" -NoTypeInformation -Encoding UTF8 -Force
+
+            ($summaryResults | Where-Object { $_.Status -eq $statusCategory }) | Export-Csv -Path "$script:reportPath\INV-Report-$statusCategory.csv" -NoTypeInformation -Encoding UTF8 -Force
         }
     }
     end {
@@ -1280,8 +1287,8 @@ Write-Host '
 
 Write-Host 'IntuneNetworkValidator - Automatically checks Microsoft Intune network endpoints.' -ForegroundColor Green
 Write-Host "`nNick Benton - oddsandendpoints.co.uk" -NoNewline;
-Write-Host ' | Version' -NoNewline; Write-Host ' 0.2.1 Public Preview' -ForegroundColor Yellow -NoNewline
-Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-03-17' -ForegroundColor Magenta
+Write-Host ' | Version' -NoNewline; Write-Host ' 0.2.2 Public Preview' -ForegroundColor Yellow -NoNewline
+Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-03-18' -ForegroundColor Magenta
 Write-Host "`nIf you have any feedback, open an issue at https://github.com/ennnbeee/IntuneNetworkValidator/issues" -ForegroundColor Cyan
 Start-Sleep -Seconds $timeoutSecs
 #endregion intro
@@ -1325,5 +1332,6 @@ Write-Host "`nTesting Results"
 $summaryResults = Get-NetworkEndpointSummary -networkEndpointResults $allResults
 if ($null -ne $summaryResults) {
     Get-NetworkEndpointSummaryReport -summaryResults $summaryResults
+    Write-Host "`nSummary report CSV export(s) have been saved to $($script:reportPath) with prefix 'INV-Report-'" -ForegroundColor Green
 }
 #endregion script
