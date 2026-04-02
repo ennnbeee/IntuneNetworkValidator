@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.2.2
+.VERSION 0.2.3
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME odds+endpoints
@@ -13,6 +13,7 @@
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
+v0.2.3 - Updated endpoints for RemoteHelp and Microsoft Security Copilot
 v0.2.2 - Updated location of CSV exported files
 v0.2.1 - Tagged endpoints that require SSL inspection
 v0.2.0 - Support for testing on macOS in PowerShell Core
@@ -39,7 +40,7 @@ The script tests both network connectivity and DNS resolution for each endpoint 
 
 .PARAMETER testScope
 Scope of the network endpoints to test specific to the technology required. Leave blank to test all endpoints.
-Valid values are 'Autopilot', 'Apple', 'Android', 'Windows', 'W365' for All Windows 365 connectivity, 'W365-Client' for Windows 365 client connectivity, 'W365-CloudPC' for Windows 365 Cloud PC backend connectivity, and 'All' for all endpoints.
+Valid values are 'Autopilot', 'Apple', 'Android', 'Windows', 'W365' for All Windows 365 connectivity, 'W365-Client' for Windows 365 client connectivity, 'W365-CloudPC' for Windows 365 Cloud PC backend connectivity, 'IntuneSuite' for Intune Suite endpoints, and 'All' for all endpoints.
 
 .PARAMETER region
 Region specific endpoints in addition to the global network endpoints. Valid values are 'North America', 'Europe', 'Australia', and 'Asia Pacific'.
@@ -56,7 +57,7 @@ The type of test to perform. 'Lite' will test a single IP address, while 'Full' 
 
 param(
     [Parameter(Mandatory = $false, HelpMessage = 'The scope of the test.')]
-    [ValidateSet('Autopilot', 'Apple', 'Android', 'Windows', 'W365', 'W365-Client', 'W365-CloudPC', 'All')]
+    [ValidateSet('Autopilot', 'Apple', 'Android', 'Windows', 'IntuneSuite', 'W365', 'W365-Client', 'W365-CloudPC', 'All')]
     [String]$testScope = 'All',
 
     [Parameter(Mandatory = $false, HelpMessage = 'Valid values are North America, Europe, Australia, and Asia Pacific.')]
@@ -73,7 +74,7 @@ $script:os = [System.Environment]::OSVersion.Platform
 switch ($script:os) {
     'Win32NT' { $script:reportPath = "$env:USERPROFILE\Documents" }
     'Unix' { $script:reportPath = "$HOME/Documents" }
-    Default { $script:reportPath = "$env:USERPROFILE\Documents" }
+    default { $script:reportPath = "$env:USERPROFILE\Documents" }
 }
 $timeoutSecs = 2
 $networkEndpointsCSV = 'https://raw.githubusercontent.com/ennnbeee/IntuneNetworkValidator/main/INV-Endpoints.csv'
@@ -82,8 +83,9 @@ $idsWindows = @('170', '172', '56', '164', '201', '203', '204', '205', '163')
 $idsW365Client = @('209', '210')
 $idsW365CloudPC = @('207', '208', '163', '170', '204', '203', '164')
 $idsW365 = $idsW365Client + $idsW365CloudPC
-$idsApple = @('301', '302', '303', '304', '305', '311')
+$idsApple = @('301', '302', '303', '304', '305', '311', '312')
 $idsAndroid = @('401', '402', '403', '404', '405', '406')
+$idsIntuneSuite = @('181', '500', '501')
 $testSummary = [PSCustomObject]@{
     'Test scope'    = $testScope
     'Test type'     = $testType
@@ -416,9 +418,11 @@ function Get-NetworkEndpoint() {
             [PSCustomObject]@{Id = '181'; Category = 'Remote Help'; Subcategory = 'Remote Help'; Endpoint = '*.monitor.azure.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '181'; Category = 'Remote Help'; Subcategory = 'Remote Help'; Endpoint = 'js.monitor.azure.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '181'; Category = 'Remote Help'; Subcategory = 'Remote Help'; Endpoint = 'go-apac.trouter.communications.svc.cloud.microsoft'; Protocol = 'TCP'; Ports = '443'; Region = 'Asia Pacific'; Notes = '' }
+            [PSCustomObject]@{Id = '181'; Category = 'Remote Help'; Subcategory = 'Remote Help'; Endpoint = 'go-amer.trouter.communications.svc.cloud.microsoft'; Protocol = 'TCP'; Ports = '443'; Region = 'North America'; Notes = '' }
             [PSCustomObject]@{Id = '181'; Category = 'Remote Help'; Subcategory = 'Remote Help'; Endpoint = 'go-eu.trouter.communications.svc.cloud.microsoft'; Protocol = 'TCP'; Ports = '443'; Region = 'Europe'; Notes = '' }
             [PSCustomObject]@{Id = '181'; Category = 'Remote Help'; Subcategory = 'Remote Help'; Endpoint = 'api.flightproxy.skype.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '181'; Category = 'Remote Help'; Subcategory = 'Remote Help'; Endpoint = 'ecs.communication.microsoft.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
+            [PSCustomObject]@{Id = '181'; Category = 'Remote Help'; Subcategory = 'Remote Help'; Endpoint = '*.trouter.communications.svc.cloud.microsoft.'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '181'; Category = 'Remote Help'; Subcategory = 'Remote Help Web'; Endpoint = 'remotehelp.microsoft.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '181'; Category = 'Remote Help'; Subcategory = 'Remote Help Web'; Endpoint = 'remoteassistanceprodacseu.communication.azure.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Europe'; Notes = '' }
             # ID 164 Windows Autopilot - Windows Update
@@ -705,6 +709,13 @@ function Get-NetworkEndpoint() {
             [PSCustomObject]@{Id = '311'; Category = 'Apple Endpoints'; Subcategory = 'Certificate Validation'; Endpoint = 'ocsp.apple.com'; Protocol = 'TCP'; Ports = '80'; Region = 'Global'; Notes = 'OCSP responder' }
             [PSCustomObject]@{Id = '311'; Category = 'Apple Endpoints'; Subcategory = 'Certificate Validation'; Endpoint = 'ocsp2.apple.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'OCSP responder' }
             [PSCustomObject]@{Id = '311'; Category = 'Apple Endpoints'; Subcategory = 'Certificate Validation'; Endpoint = 'valid.apple.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Certificate validation' }
+            # ID 312 Apple App and Scripts
+            [PSCustomObject]@{Id = '312'; Category = 'Apple Endpoints'; Subcategory = 'App and Scripts'; Endpoint = 'macsidecar.manage.microsoft.com'; Protocol = 'TCP'; Ports = '443'; Region = 'North America'; Notes = '' }
+            [PSCustomObject]@{Id = '312'; Category = 'Apple Endpoints'; Subcategory = 'App and Scripts'; Endpoint = 'macsidecarprod.azureedge.net'; Protocol = 'TCP'; Ports = '443'; Region = 'North America'; Notes = '' }
+            [PSCustomObject]@{Id = '312'; Category = 'Apple Endpoints'; Subcategory = 'App and Scripts'; Endpoint = 'macsidecareu.manage.microsoft.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Europe'; Notes = '' }
+            [PSCustomObject]@{Id = '312'; Category = 'Apple Endpoints'; Subcategory = 'App and Scripts'; Endpoint = 'macsidecarprodeu.azureedge.net'; Protocol = 'TCP'; Ports = '443'; Region = 'Europe'; Notes = '' }
+            [PSCustomObject]@{Id = '312'; Category = 'Apple Endpoints'; Subcategory = 'App and Scripts'; Endpoint = 'macsidecarap.manage.microsoft.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Asia Pacific'; Notes = '' }
+            [PSCustomObject]@{Id = '312'; Category = 'Apple Endpoints'; Subcategory = 'App and Scripts'; Endpoint = 'macsidecarprodap.azureedge.net'; Protocol = 'TCP'; Ports = '443'; Region = 'Asia Pacific'; Notes = '' }
             # ID 401 Android Endpoints - Google Play and Updates
             [PSCustomObject]@{Id = '401'; Category = 'Android Endpoints'; Subcategory = 'Google Play and Updates'; Endpoint = 'play.google.com'; Protocol = 'TCP'; Ports = '443, 5228, 5229, 5230'; Region = 'Global'; Notes = '' }
             [PSCustomObject]@{Id = '401'; Category = 'Android Endpoints'; Subcategory = 'Google Play and Updates'; Endpoint = 'android.com'; Protocol = 'TCP'; Ports = '443, 5228, 5229, 5230'; Region = 'Global'; Notes = '' }
@@ -778,6 +789,35 @@ function Get-NetworkEndpoint() {
             [PSCustomObject]@{Id = '406'; Category = 'Android Endpoints'; Subcategory = 'Time Service'; Endpoint = 'time.google.com'; Protocol = 'UDP'; Ports = '123'; Region = 'Global'; Notes = 'During provisioning, Android devices require access to an NTP server, which is typically accessed via port UDP/123. This can be changed by an OEM.' }
             [PSCustomObject]@{Id = '406'; Category = 'Android Endpoints'; Subcategory = 'Safebrowsing'; Endpoint = 'android-safebrowsing.google.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Safebrowsing endpoints are used for Google Play Protect.' }
             [PSCustomObject]@{Id = '406'; Category = 'Android Endpoints'; Subcategory = 'Safebrowsing'; Endpoint = 'safebrowsing.google.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Safebrowsing endpoints are used for Google Play Protect.' }
+            # ID 500 Security Copilot Egress Endpoints
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.237.91.160/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Australia East' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.160.64.120/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Brazil South' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.173.72.88/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Canada Central' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.248.114.8/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Canada East' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.248.114.8/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Central India' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '48.211.114.168/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'East US' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '72.153.16.200/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'East US 2' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.251.29.8/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'France Central' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.182.156.104/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Germany West Central' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '48.210.117.64/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Japan East' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.230.181.72/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Korea Central' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '72.145.24.32/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'North Europe' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.171.44.192/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Qatar Central' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.222.245.0/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'South Africa North' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '23.98.246.88/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'South Central US' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '57.155.157.72/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Southeast Asia' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '135.225.147.168/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Sweden Central' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '74.242.234.136/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'Switzerland North' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '74.243.192.152/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'UAE North' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '4.250.47.152/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'UK South' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '172.208.176.8/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'West Central US' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '72.145.132.208/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'West Europe' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '172.178.185.8/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'West US' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '72.154.34.248/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'West US 2' }
+            [PSCustomObject]@{Id = '407'; Category = 'Security Copilot'; Subcategory = 'Egress Endpoints'; Endpoint = '57.154.125.160/29'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'West US 3' }
+            # ID 501 Endpoint Privilege Management
+            [PSCustomObject]@{Id = '408'; Category = 'Endpoint Privilege Management'; Subcategory = 'EPM Reporting'; Endpoint = '*.dm.microsoft.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'No SSL Inspection' }
+            [PSCustomObject]@{Id = '408'; Category = 'Endpoint Privilege Management'; Subcategory = 'EPM Reporting'; Endpoint = '*.events.data.microsoft.com'; Protocol = 'TCP'; Ports = '443'; Region = 'Global'; Notes = 'No SSL Inspection' }
 
         )
     }
@@ -1287,8 +1327,8 @@ Write-Host '
 
 Write-Host 'IntuneNetworkValidator - Automatically checks Microsoft Intune network endpoints.' -ForegroundColor Green
 Write-Host "`nNick Benton - oddsandendpoints.co.uk" -NoNewline;
-Write-Host ' | Version' -NoNewline; Write-Host ' 0.2.2 Public Preview' -ForegroundColor Yellow -NoNewline
-Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-03-18' -ForegroundColor Magenta
+Write-Host ' | Version' -NoNewline; Write-Host ' 0.2.3 Public Preview' -ForegroundColor Yellow -NoNewline
+Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-04-02' -ForegroundColor Magenta
 Write-Host "`nIf you have any feedback, open an issue at https://github.com/ennnbeee/IntuneNetworkValidator/issues" -ForegroundColor Cyan
 Start-Sleep -Seconds $timeoutSecs
 #endregion intro
@@ -1321,6 +1361,7 @@ switch ($testScope) {
     'Apple' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsApple } }
     'Android' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsAndroid } }
     'Windows' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsWindows } }
+    'IntuneSuite' { $networkEndpoints = $script:networkEndpointsAll | Where-Object { $_.Id -in $idsIntuneSuite } }
     default { $networkEndpoints = $script:networkEndpointsAll }
 }
 
