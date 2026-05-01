@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.2.3
+.VERSION 0.2.4
 .GUID c06924d5-dc8b-4f29-a592-a036d27b50e9
 .AUTHOR Nick Benton
 .COMPANYNAME odds+endpoints
@@ -13,6 +13,7 @@
 .REQUIREDSCRIPTS
 .EXTERNALSCRIPTDEPENDENCIES
 .RELEASENOTES
+v0.2.4 - Updated functions
 v0.2.3 - Updated endpoints for RemoteHelp and Microsoft Security Copilot
 v0.2.2 - Updated location of CSV exported files
 v0.2.1 - Tagged endpoints that require SSL inspection
@@ -94,7 +95,7 @@ $testSummary = [PSCustomObject]@{
     'Proxy address' = 'None'
     'Proxy PAC'     = 'None'
 }
-#endregion variables
+#endregion
 
 #region functions
 function Get-ProxyConfig {
@@ -232,14 +233,14 @@ function Test-DNS {
         if ($dnsARecord) {
             if ($dnsARecord -eq '0.0.0.0' -or $dnsARecord -eq '127.0.0.1') {
                 $dnsResult = $false
-                break
+                throw
             }
         }
     }
     foreach ($dnsAAAARecord in $dnsAAAARecords) {
         if ($dnsAAAARecord -eq '::') {
             $dnsResult = $false
-            break
+            throw
         }
     }
     return $dnsResult
@@ -1299,39 +1300,32 @@ function Get-NetworkEndpointSummaryReport () {
 
     }
 }
-#endregion functions
+#endregion
 
 #$script:networkEndpointsAll | Export-Csv -Path '.\INV-Endpoints.csv'-NoTypeInformation -Encoding UTF8 -Force
 
 #region intro
 Clear-Host
 Write-Host '
- _______         __
-|_     _|.-----.|  |_.--.--.-----.-----.' -ForegroundColor Cyan -NoNewline
+░▀█▀░█▀█░▀█▀░█░█░█▀█░█▀▀
+░░█░░█░█░░█░░█░█░█░█░█▀▀
+░▀▀▀░▀░▀░░▀░░▀▀▀░▀░▀░▀▀▀' -ForegroundColor Cyan
 Write-Host '
- _|   |_ |     ||   _|  |  |     |  -__|' -ForegroundColor DarkCyan -NoNewline
+░█▀█░█▀▀░▀█▀░█░█░█▀█░█▀▄░█░█
+░█░█░█▀▀░░█░░█▄█░█░█░█▀▄░█▀▄
+░▀░▀░▀▀▀░░▀░░▀░▀░▀▀▀░▀░▀░▀░▀' -ForegroundColor Red
 Write-Host '
-|_______||__|__||____|_____|__|__|_____|' -ForegroundColor Blue
-Write-Host '
- _______         __                        __
-|    |  |.-----.|  |_.--.--.--.-----.----.|  |--.
-|       ||  -__||   _|  |  |  |  _  |   _||    <
-|__|____||_____||____|________|_____|__|  |__|__|
-' -ForegroundColor yellow
-Write-Host '
- ___ ___         __ __     __         __
-|   |   |.---.-.|  |__|.--|  |.---.-.|  |_.-----.----.
-|   |   ||  _  ||  |  ||  _  ||  _  ||   _|  _  |   _|
- \_____/ |___._||__|__||_____||___._||____|_____|__|
-' -ForegroundColor Green
+░█░█░█▀█░█░░░▀█▀░█▀▄░█▀█░▀█▀░█▀█░█▀▄
+░▀▄▀░█▀█░█░░░░█░░█░█░█▀█░░█░░█░█░█▀▄
+░░▀░░▀░▀░▀▀▀░▀▀▀░▀▀░░▀░▀░░▀░░▀▀▀░▀░▀' -ForegroundColor DarkRed
 
-Write-Host 'IntuneNetworkValidator - Automatically checks Microsoft Intune network endpoints.' -ForegroundColor Green
+Write-Host "`nIntuneNetworkValidator - Automatically checks Microsoft Intune network endpoints." -ForegroundColor Green
 Write-Host "`nNick Benton - oddsandendpoints.co.uk" -NoNewline;
-Write-Host ' | Version' -NoNewline; Write-Host ' 0.2.3 Public Preview' -ForegroundColor Yellow -NoNewline
-Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-04-02' -ForegroundColor Magenta
+Write-Host ' | Version' -NoNewline; Write-Host ' 0.2.4 Public Preview' -ForegroundColor Yellow -NoNewline
+Write-Host ' | Last updated: ' -NoNewline; Write-Host '2026-05-01' -ForegroundColor Magenta
 Write-Host "`nIf you have any feedback, open an issue at https://github.com/ennnbeee/IntuneNetworkValidator/issues" -ForegroundColor Cyan
 Start-Sleep -Seconds $timeoutSecs
-#endregion intro
+#endregion
 
 #region script
 if ($script:os -ne 'Unix') {
@@ -1375,4 +1369,4 @@ if ($null -ne $summaryResults) {
     Get-NetworkEndpointSummaryReport -summaryResults $summaryResults
     Write-Host "`nSummary report CSV export(s) have been saved to $($script:reportPath) with prefix 'INV-Report-'" -ForegroundColor Green
 }
-#endregion script
+#endregion
